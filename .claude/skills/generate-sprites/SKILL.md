@@ -51,8 +51,9 @@ Pipeline: source PNG (flat green background) → drift-corrected full-res frames
 - **Wrong row/frame count**: usually frames touch or there's stray noise on the background. Clean the source or split it manually; the current pipeline has no `--rows`/`--cols` override (the standalone [extract_frames.py](../../../extract_frames.py) docstring mentions one but it isn't implemented).
 - **`[FAIL]` / green bleed**: background isn't flat enough, or `--coverage-thresh` is too low letting edge blocks average in green. Raise the threshold, or tighten the source background to a solid `(0,255,0)`.
 - **Thin features disappear**: lower `--coverage-thresh`, or raise `--target-size` so those features span more source blocks.
+- **A state comes out wider/narrower than expected**: output width tracks that state's padded-crop aspect ratio, which is driven by the widest frame plus `--h-pad-frac`. Trim stray background in the source or lower `--h-pad-frac` to tighten it.
 - **Frames jitter horizontally in-game**: that's drift the pipeline already corrects on the silhouette bbox center; if it persists, the silhouette width itself changes a lot between frames (e.g. an arm extending) — accept it or author tighter source frames.
 
 ## Assembling a sheet
 
-`main.py` writes individual frames, not a packed sheet. To montage a state into one horizontal strip (like the existing `_walk_final_strip.png`), concatenate its `*_preview.png` frames in order, e.g. with PIL: paste each frame at `x = i * frame_width` onto a `(n*frame_width, frame_height)` canvas.
+`main.py` writes individual frames, not a packed sheet. All frames of one state share the same size, so to montage a state into one horizontal strip (like the existing `_walk_final_strip.png`), concatenate its `*_preview.png` frames in order — with PIL, paste each at `x = i * frame_width` onto a `(n * frame_width, frame_height)` canvas. Do this per state; two states can have different frame widths, so don't mix them on one row without re-padding.
