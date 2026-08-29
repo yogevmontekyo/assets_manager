@@ -17,10 +17,17 @@ All frames across the whole sheet share ONE locked color palette, so an
 animation's frames don't flicker/drift in color from frame to frame.
 
 Usage:
-    python3 main.py input.png --out-dir out --target-size 64 --n-colors 12 \\
-        --state-names walk jump
+    # process every image in Input_Generated_Character/
+    python3 main.py --target-size 96 --n-colors 12 --state-names walk jump
 
-Outputs (in --out-dir):
+    # or a specific file / folder
+    python3 main.py input.png --out-dir Output_Sprite_Sheet --target-size 64
+
+When the source is a folder (the default), each image's outputs go in their
+own subfolder of --out-dir (named after the image) so frames don't collide.
+A single explicit file writes straight into --out-dir.
+
+Outputs (in --out-dir[/<image-name>]):
     <state>_<NN>_raw.png        full-res, padded, drift-corrected crop
     <state>_<NN>.png            final clean pixel-art frame (target_size^2)
     <state>_<NN>_preview.png    8x nearest-neighbor upscale for inspection
@@ -46,7 +53,35 @@ def make_palette_swatch(palette, out_path, swatch_size=48):
     Image.fromarray(arr).save(out_path)
 
 
-def run_pipeline(input_path, out_dir, target_size=64, n_colors=12,
+_PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_IN_DIR = os.path.join(_PROJECT_DIR, "Input_Generated_Character")
+DEFAULT_OUT_DIR = os.path.join(_PROJECT_DIR, "Output_Sprite_Sheet")
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
+
+
+def resolve_inputs(input_arg):
+    """Return (list_of_image_paths, from_folder).
+
+    - input_arg None      -> every image in DEFAULT_IN_DIR
+    - input_arg a folder  -> every image in that folder
+    - input_arg a file    -> just that file
+    from_folder is True in the first two cases; callers use it to decide
+    whether to nest each image's output in its own subfolder.
+    """
+    if input_arg and os.path.isfile(input_arg):
+        return [input_arg], False
+
+    folder = input_arg or DEFAULT_IN_DIR
+    if not os.path.isdir(folder):
+        raise SystemExit(f"Input not found: {folder}")
+    imgs = sorted(os.path.join(folder, f) for f in os.listdir(folder)
+                  if f.lower().endswith(IMAGE_EXTS))
+    if not imgs:
+        raise SystemExit(f"No images ({', '.join(IMAGE_EXTS)}) found in {folder}")
+    return imgs, True
+
+
+def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=12,
                   h_pad_frac=0.15, v_pad_frac=0.15, coverage_thresh=0.35,
                   state_names=None):
     os.makedirs(out_dir, exist_ok=True)
@@ -134,9 +169,14 @@ def run_pipeline(input_path, out_dir, target_size=64, n_colors=12,
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("input", help="Path to source sheet or single-character PNG")
-    ap.add_argument("--out-dir", default="./pipeline_out")
-    ap.add_argument("--target-size", type=int, default=64,
+    ap.add_argument("input", nargs="?", default=None,
+                     help="Source sheet/character PNG, or a folder of them. "
+                          "Omit to process every image in the project's "
+                          "Input_Generated_Character/ folder.")
+    ap.add_argument("--out-dir", default=DEFAULT_OUT_DIR,
+                     help="Where to write frames and QA files "
+                          "(default: the project's Output_Sprite_Sheet/ folder)")
+    ap.add_argument("--target-size", type=int, default=96,
                      help="Output sprite grid HEIGHT in pixels; width is "
                           "derived per-state to preserve the source crop's "
                           "aspect ratio (not forced square)")
@@ -150,6 +190,18 @@ if __name__ == "__main__":
     ap.add_argument("--state-names", nargs="*", default=None)
     args = ap.parse_args()
 
-    run_pipeline(args.input, args.out_dir, args.target_size, args.n_colors,
-                 args.h_pad_frac, args.v_pad_frac, args.coverage_thresh,
-                 args.state_names)
+    inputs, from_folder = resolve_inputs(args.input)
+    print(f"Processing {len(inputs)} image(s): "
+          f"{[os.path.basename(p) for p in inputs]}")
+    for img_path in inputs:
+        # When the source is a folder, give each image its own output
+        # subfolder so their identically-named frames don't collide.
+        if from_folder:
+            stem = os.path.splitext(os.path.basename(img_path))[0]
+            out_dir = os.path.join(args.out_dir, stem)
+        else:
+            out_dir = args.out_dir
+        print(f"\n=== {os.path.basename(img_path)} -> {out_dir}/ ===")
+        run_pipeline(img_path, out_dir, args.target_size, args.n_colors,
+                     args.h_pad_frac, args.v_pad_frac, args.coverage_thresh,
+                     args.state_names)

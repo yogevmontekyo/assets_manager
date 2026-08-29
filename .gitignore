@@ -1,0 +1,7 @@
+# Source images and generated sprite output
+/Input_Generated_Character/
+/Output_Sprite_Sheet/
+
+# Python
+__pycache__/
+*.pyc

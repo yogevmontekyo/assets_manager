@@ -19,14 +19,21 @@ Pipeline: source PNG (flat green background) → drift-corrected full-res frames
 
 ## Steps
 
-1. Find the input. Default location is [Input_Generated_Character/](../../../Input_Generated_Character/); accept an explicit path if the user gives one.
-2. Decide state names. One per detected row, top to bottom (e.g. `walk jump`). If unknown, omit `--state-names` and the pipeline uses `state0, state1, …`. Passing the wrong count is ignored with a warning.
+1. Put the source image(s) in [Input_Generated_Character/](../../../Input_Generated_Character/), or note an explicit path the user gave.
+2. Decide state names. One per detected row, top to bottom (e.g. `walk jump`). If unknown, omit `--state-names` and the pipeline uses `state0, state1, …`. Passing the wrong count is ignored with a warning. Note: `--state-names` applies to *every* image in a batch, so only pass it when all inputs share the same row layout.
 3. Run from the project root:
    ```
-   python main.py <input.png> --out-dir Output_Sprite_Sheet --target-size 64 --n-colors 12 --state-names <names...>
+   # process every image in Input_Generated_Character/
+   python main.py --target-size 64 --n-colors 12 --state-names <names...>
+
+   # or one specific file / folder
+   python main.py <path> --target-size 64 --n-colors 12 --state-names <names...>
    ```
-4. Read `Output_Sprite_Sheet/_report.txt`. It lists each state's derived output `WxH` (aspect check) and one line per frame; every frame line must end in `[OK]`. `[FAIL]` means green bled into the palette — see Troubleshooting.
-5. Show the user `Output_Sprite_Sheet/_contact_sheet.png` (detected row/frame boundaries on the source) and a few `*_preview.png` files to confirm detection and quality.
+   - `input` is optional; omitted → every image (`.png/.jpg/.jpeg/.bmp/.webp`) in `Input_Generated_Character/`.
+   - `--out-dir` defaults to the project's `Output_Sprite_Sheet/`; pass it only to write elsewhere.
+   - Folder source (the default) → each image's outputs land in `Output_Sprite_Sheet/<image-name>/`. A single explicit file writes straight into `Output_Sprite_Sheet/`.
+4. For each output folder, read `_report.txt`. It lists each state's derived output `WxH` (aspect check) and one line per frame; every frame line must end in `[OK]`. `[FAIL]` means green bled into the palette — see Troubleshooting.
+5. Show the user each `_contact_sheet.png` (detected row/frame boundaries on the source) and a few `*_preview.png` files to confirm detection and quality.
 
 ## Key parameters
 
@@ -37,7 +44,7 @@ Pipeline: source PNG (flat green background) → drift-corrected full-res frames
 | `--coverage-thresh` | 0.35 | thin details (antennae, fingers) vanish — try 0.20–0.30 | edges look bloated / jagged — try 0.45–0.55 |
 | `--h-pad-frac` / `--v-pad-frac` | 0.15 | character clips the frame edge | too much empty margin |
 
-## Outputs (in `--out-dir`)
+## Outputs (in `--out-dir`, or `--out-dir/<image-name>/` for a folder batch)
 
 - `<state>_<NN>_raw.png` — full-res padded, horizontally drift-corrected crop (vertical motion preserved).
 - `<state>_<NN>.png` — final pixel-art frame, `target_size` tall and aspect-derived wide (same size for all frames of a state).
