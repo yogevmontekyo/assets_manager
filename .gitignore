@@ -1,6 +1,7 @@
 # Source images and generated sprite output
 /Input_Generated_Character/
 /Output_Sprite_Sheet/
+/background_image/snapped/
 
 # Python
 __pycache__/
