@@ -5,7 +5,9 @@ description: Run this project's sprite pipeline (main.py) to turn an AI-generate
 
 # Generate Sprites
 
-Pipeline: source PNG (flat green background) → per-frame crop → cross-frame centering → aspect-preserving coverage-aware downscale → one shared locked palette → dither-free pixel-art frames + QA report.
+Pipeline: source PNG (flat green background) → per-frame crop → cross-frame centering → aspect-preserving coverage-aware downscale → one shared locked palette (default 256 colors) → dither-free pixel-art frames + QA report.
+
+Green-contaminated edge pixels from the source's own anti-aliasing (`looks_greenish` in [pixelate.py](../../../pixelate.py)) are kept out of both the averaged output and the palette, so a high `--n-colors` doesn't spend a palette slot on a green rim.
 
 `--target-size` is the output **height**. Width is derived per state from that state's padded-crop aspect ratio, so frames keep their proportions instead of being squashed square. All frames of one state share the same dimensions; different states may have different widths.
 
@@ -24,10 +26,10 @@ Pipeline: source PNG (flat green background) → per-frame crop → cross-frame 
 3. Run from the project root:
    ```
    # process every image in Input_Generated_Character/
-   python main.py --target-size 64 --n-colors 12 --state-names <names...>
+   python main.py --target-size 96 --state-names <names...>
 
    # or one specific file / folder
-   python main.py <path> --target-size 64 --n-colors 12 --state-names <names...>
+   python main.py <path> --target-size 96 --n-colors 32 --state-names <names...>
    ```
    - `input` is optional; omitted → every image (`.png/.jpg/.jpeg/.bmp/.webp`) in `Input_Generated_Character/`.
    - `--out-dir` defaults to the project's `Output_Sprite_Sheet/`; pass it only to write elsewhere.
@@ -40,7 +42,7 @@ Pipeline: source PNG (flat green background) → per-frame crop → cross-frame 
 | Flag | Default | Raise it when… | Lower it when… |
 |---|---|---|---|
 | `--target-size` | 64 | want taller/higher-res sprites (e.g. 96, 128) — this is the output height; width follows the aspect ratio | want chunkier pixels |
-| `--n-colors` | 12 | character has more distinct shades | want a flatter, more retro look |
+| `--n-colors` | 256 | — (256 is the max) | want a flatter, more retro look — try 12–32 |
 | `--coverage-thresh` | 0.35 | thin details (antennae, fingers) vanish — try 0.20–0.30 | edges look bloated / jagged — try 0.45–0.55 |
 | `--h-pad-frac` / `--v-pad-frac` | 0.15 | character clips the frame edge | too much empty margin |
 | `--center-method` | `feature` | — | use `centroid` (no OpenCV) or `bbox` (old behavior) if `feature` mis-aligns a specific sheet |
@@ -67,7 +69,7 @@ Aligns the character to the same x in every frame of a state so it doesn't slide
 ## Troubleshooting
 
 - **Wrong row/frame count**: usually frames touch or there's stray noise on the background. Clean the source or split it manually; the current pipeline has no `--rows`/`--cols` override (the standalone [extract_frames.py](../../../extract_frames.py) docstring mentions one but it isn't implemented).
-- **`[FAIL]` / green bleed**: background isn't flat enough, or `--coverage-thresh` is too low letting edge blocks average in green. Raise the threshold, or tighten the source background to a solid `(0,255,0)`.
+- **`[FAIL]` / green bleed**: the pipeline already filters greenish edge pixels from the average and the palette, so a `[FAIL]` now means real contamination — a background that isn't flat green, or `--coverage-thresh` too low letting edge blocks average in green. Raise the threshold, or tighten the source background to a solid `(0,255,0)`. As a last resort widen the green filter (`looks_greenish` margin) in [pixelate.py](../../../pixelate.py).
 - **Thin features disappear**: lower `--coverage-thresh`, or raise `--target-size` so those features span more source blocks.
 - **A state comes out wider/narrower than expected**: output width tracks that state's padded-crop aspect ratio, which is driven by the widest frame plus `--h-pad-frac`. Trim stray background in the source or lower `--h-pad-frac` to tighten it.
 - **Frames jitter horizontally in-game**: check `_report.txt`'s `core-jitter … -> Npx` for that state. If N is large with `feature`, try `--center-method centroid`; if a cape/hair still drags it, the source frames themselves differ too much — author tighter frames. `bbox` (old method) is the most appendage-sensitive and usually worst.

@@ -19,7 +19,7 @@ animation's frames don't flicker/drift in color from frame to frame.
 
 Usage:
     # process every image in Input_Generated_Character/
-    python3 main.py --target-size 96 --n-colors 12 --state-names walk jump
+    python3 main.py --target-size 96 --n-colors 256 --state-names walk jump
 
     # or a specific file / folder
     python3 main.py input.png --out-dir Output_Sprite_Sheet --target-size 64
@@ -46,12 +46,15 @@ import extract_frames as ef
 import pixelate as px
 
 
-def make_palette_swatch(palette, out_path, swatch_size=48):
-    n = len(palette)
-    img = Image.new("RGB", (swatch_size * n, swatch_size), (255, 255, 255))
+def make_palette_swatch(palette, out_path, max_width=1536):
+    """Horizontal strip of the palette colors. Swatch width shrinks so the
+    whole strip stays <= max_width px even for a 256-color palette."""
+    n = max(1, len(palette))
+    sw = max(1, min(48, max_width // n))
+    img = Image.new("RGB", (sw * n, max(sw, 24)), (255, 255, 255))
     arr = np.array(img)
     for i, color in enumerate(palette):
-        arr[:, i * swatch_size:(i + 1) * swatch_size] = color
+        arr[:, i * sw:(i + 1) * sw] = color
     Image.fromarray(arr).save(out_path)
 
 
@@ -192,8 +195,10 @@ if __name__ == "__main__":
                      help="Output sprite grid HEIGHT in pixels; width is "
                           "derived per-state to preserve the source crop's "
                           "aspect ratio (not forced square)")
-    ap.add_argument("--n-colors", type=int, default=12,
-                     help="Size of the shared locked palette (excl. background)")
+    ap.add_argument("--n-colors", type=int, default=256,
+                     help="Size of the shared locked palette (excl. "
+                          "background), max 256. Lower it (e.g. 12-32) for a "
+                          "flatter retro look. Default: 256.")
     ap.add_argument("--h-pad-frac", type=float, default=0.15)
     ap.add_argument("--v-pad-frac", type=float, default=0.15)
     ap.add_argument("--coverage-thresh", type=float, default=0.35,

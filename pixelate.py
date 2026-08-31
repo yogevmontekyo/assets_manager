@@ -34,6 +34,18 @@ def is_background(arr, g_thresh=140, margin=60):
     return (g > g_thresh) & (g > r + margin) & (g > b + margin)
 
 
+def looks_greenish(arr, margin=24):
+    """Much looser than is_background: any pixel whose green channel clearly
+    leads red and blue. These are the source's own anti-aliased edge pixels
+    -- too dark to pass is_background (g <= 140) so they count as part of
+    the silhouette, but their color is contaminated chroma-green and must
+    be kept out of the averaged output. Invisible at low --n-colors (they
+    get lumped into a brown/black bucket); at high --n-colors they'd get
+    their own slot and show as a green rim."""
+    r, g, b = arr[..., 0].astype(int), arr[..., 1].astype(int), arr[..., 2].astype(int)
+    return (g > r + margin) & (g > b + margin)
+
+
 def coverage_aware_downscale(img_rgb, target_size, coverage_thresh=0.35):
     """Downscale to (target_size, target_size) [or (tw, th) tuple] without
     letting background bleed into edge pixels."""
@@ -45,6 +57,8 @@ def coverage_aware_downscale(img_rgb, target_size, coverage_thresh=0.35):
     arr = np.array(img_rgb.convert("RGB"))
     sh, sw, _ = arr.shape
     fg_mask = ~is_background(arr)
+    # pixels that shape the silhouette but whose color is green-contaminated
+    color_mask = fg_mask & ~looks_greenish(arr)
 
     # block boundaries via linspace so source dims that don't divide evenly
     # (e.g. 910 / 64) still tile the full image with no gaps/overlaps
@@ -67,8 +81,12 @@ def coverage_aware_downscale(img_rgb, target_size, coverage_thresh=0.35):
 
             if coverage >= coverage_thresh:
                 block = arr[y0:y1, x0:x1]
-                fg_pixels = block[block_fg_mask]
-                out[oy, ox] = fg_pixels.mean(axis=0).astype(np.uint8)
+                # average only the clean (non-green-contaminated) silhouette
+                # pixels; fall back to all silhouette pixels if a block is
+                # entirely fringe
+                clean = color_mask[y0:y1, x0:x1]
+                pick = clean if clean.any() else block_fg_mask
+                out[oy, ox] = block[pick].mean(axis=0).astype(np.uint8)
             # else: leave as BG_EXACT (already set)
 
     return Image.fromarray(out, "RGB")
@@ -135,10 +153,21 @@ def build_shared_palette(fg_pixel_arrays, n_colors=12):
     against this same palette keeps colors consistent frame-to-frame
     instead of drifting/flickering."""
     pooled = np.concatenate([p for p in fg_pixel_arrays if len(p) > 0], axis=0)
+    # drop any lingering green-contaminated edge pixels before the palette
+    # is derived, so no palette slot is spent on a green rim (matters most
+    # at high --n-colors, where such a slot would otherwise survive)
+    clean = pooled[~looks_greenish(pooled.reshape(-1, 1, 3)).ravel()]
+    if len(clean) >= max(8, n_colors):
+        pooled = clean
     pooled_img = Image.fromarray(pooled.reshape(1, -1, 3).astype("uint8"))
     quant = pooled_img.quantize(colors=n_colors, method=Image.MEDIANCUT,
                                  dither=Image.Dither.NONE)
-    return np.array(quant.getpalette()[:n_colors * 3]).reshape(-1, 3)
+    # trim to the palette entries actually used -- when the pool has fewer
+    # than n_colors distinct colors, getpalette() pads the tail with zeros
+    # and those would show up as spurious black swatches / palette slots.
+    n_used = int(np.array(quant).max()) + 1
+    n_used = min(n_used, n_colors)
+    return np.array(quant.getpalette()[:n_used * 3]).reshape(-1, 3)
 
 
 def foreground_pixels_of_downscaled(img_rgb):
