@@ -5,13 +5,13 @@ description: Run this project's sprite pipeline (main.py) to turn an AI-generate
 
 # Generate Sprites
 
-Pipeline: source PNG (flat green background) → drift-corrected full-res frames → aspect-preserving coverage-aware downscale → one shared locked palette → dither-free pixel-art frames + QA report.
+Pipeline: source PNG (flat green background) → per-frame crop → cross-frame centering → aspect-preserving coverage-aware downscale → one shared locked palette → dither-free pixel-art frames + QA report.
 
 `--target-size` is the output **height**. Width is derived per state from that state's padded-crop aspect ratio, so frames keep their proportions instead of being squashed square. All frames of one state share the same dimensions; different states may have different widths.
 
 ## Requirements
 
-- Python 3 with `Pillow` and `numpy` (no requirements file; install with `pip install pillow numpy` if missing).
+- Python 3; `pip install -r requirements.txt` (`numpy`, `Pillow`, `opencv-python-headless`). OpenCV is only for the default `--center-method feature`; without it, centering auto-falls back to the pure-NumPy `centroid` method.
 - **Source image must have a flat chroma-green background** — `is_background()` in [extract_frames.py](../../../extract_frames.py) tests `g>140 and g>r+60 and g>b+60`. The exact fill color is `(0,255,0)`. Renders with anti-aliased edges are fine; crop/edge fringe is re-cleaned automatically.
 - Layout the pipeline understands with no special-casing:
   - One full-body character on green → detected as 1 state / 1 frame.
@@ -43,15 +43,26 @@ Pipeline: source PNG (flat green background) → drift-corrected full-res frames
 | `--n-colors` | 12 | character has more distinct shades | want a flatter, more retro look |
 | `--coverage-thresh` | 0.35 | thin details (antennae, fingers) vanish — try 0.20–0.30 | edges look bloated / jagged — try 0.45–0.55 |
 | `--h-pad-frac` / `--v-pad-frac` | 0.15 | character clips the frame edge | too much empty margin |
+| `--center-method` | `feature` | — | use `centroid` (no OpenCV) or `bbox` (old behavior) if `feature` mis-aligns a specific sheet |
+
+### Centering (`--center-method`)
+
+Aligns the character to the same x in every frame of a state so it doesn't slide around in playback. The problem it solves: a billowing cape, swinging hand, flying hair or held item all move a naive center estimate.
+
+- **`feature`** (default) — ORB keypoint matches between each frame and a reference frame; the shift is the MAD-robust median of matched-point dx. Rigid features (face, collar, belt) agree on one shift; cape/hair/hand keypoints are inconsistent and get rejected as outliers. Handles front views, side walks and jumps. If a state's raw frames barely drift (≤3 px) the ORB step is skipped and `centroid` is used, so already-aligned sheets aren't perturbed. Needs OpenCV.
+- **`centroid`** — center of mass of the head+torso band (skips hair spikes and the leg/foot zone). Pure NumPy. Good for idle/walk; a large one-sided cape still pulls it a few px, and it drifts on jumps.
+- **`bbox`** — midpoint of the full silhouette bbox. The original method; any one-sided appendage moves it by half its reach. Kept for comparison.
+
+`_report.txt` logs the method used, the per-frame offsets, and `core-jitter <before>px -> <after>px` (head-centroid spread across frames — aim for ≤ ~2 px).
 
 ## Outputs (in `--out-dir`, or `--out-dir/<image-name>/` for a folder batch)
 
-- `<state>_<NN>_raw.png` — full-res padded, horizontally drift-corrected crop (vertical motion preserved).
+- `<state>_<NN>_raw.png` — full-res padded, cross-frame-centered crop (vertical motion preserved).
 - `<state>_<NN>.png` — final pixel-art frame, `target_size` tall and aspect-derived wide (same size for all frames of a state).
 - `<state>_<NN>_preview.png` — 8× nearest-neighbor upscale of that frame for inspection.
 - `_contact_sheet.png` — detected boundaries overlaid on the source.
 - `_palette_swatch.png` — the single palette shared by every frame (no frame-to-frame color flicker).
-- `_report.txt` — per-frame color count + bleed check.
+- `_report.txt` — per-state centering method/offsets/jitter + per-frame color count + bleed check.
 
 ## Troubleshooting
 
@@ -59,7 +70,8 @@ Pipeline: source PNG (flat green background) → drift-corrected full-res frames
 - **`[FAIL]` / green bleed**: background isn't flat enough, or `--coverage-thresh` is too low letting edge blocks average in green. Raise the threshold, or tighten the source background to a solid `(0,255,0)`.
 - **Thin features disappear**: lower `--coverage-thresh`, or raise `--target-size` so those features span more source blocks.
 - **A state comes out wider/narrower than expected**: output width tracks that state's padded-crop aspect ratio, which is driven by the widest frame plus `--h-pad-frac`. Trim stray background in the source or lower `--h-pad-frac` to tighten it.
-- **Frames jitter horizontally in-game**: that's drift the pipeline already corrects on the silhouette bbox center; if it persists, the silhouette width itself changes a lot between frames (e.g. an arm extending) — accept it or author tighter source frames.
+- **Frames jitter horizontally in-game**: check `_report.txt`'s `core-jitter … -> Npx` for that state. If N is large with `feature`, try `--center-method centroid`; if a cape/hair still drags it, the source frames themselves differ too much — author tighter frames. `bbox` (old method) is the most appendage-sensitive and usually worst.
+- **A previously-fine sheet shifted after adding centering**: force the old behavior with `--center-method bbox`.
 
 ## Assembling a sheet
 

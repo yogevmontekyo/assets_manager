@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Full sprite pipeline: sheet -> drift-corrected frames -> clean pixel art.
+Full sprite pipeline: sheet -> centered frames -> clean pixel art.
 
-Combines extract_frames.py (row/frame detection, horizontal drift
-correction, vertical-motion-preserving crop) and pixelate.py
+Combines extract_frames.py (row/frame detection, vertical-motion-
+preserving crop), centering.py (cross-frame character alignment that
+ignores billowing capes / swinging hands / flying hair) and pixelate.py
 (coverage-aware downscale with no background bleed + dither-free palette
 quantization) into one run.
 
@@ -28,7 +29,7 @@ own subfolder of --out-dir (named after the image) so frames don't collide.
 A single explicit file writes straight into --out-dir.
 
 Outputs (in --out-dir[/<image-name>]):
-    <state>_<NN>_raw.png        full-res, padded, drift-corrected crop
+    <state>_<NN>_raw.png        full-res, padded, cross-frame-centered crop
     <state>_<NN>.png            final clean pixel-art frame (target_size^2)
     <state>_<NN>_preview.png    8x nearest-neighbor upscale for inspection
     _contact_sheet.png          detected row/frame boundaries overlaid on source
@@ -40,6 +41,7 @@ import os
 import numpy as np
 from PIL import Image
 
+import centering
 import extract_frames as ef
 import pixelate as px
 
@@ -81,9 +83,9 @@ def resolve_inputs(input_arg):
     return imgs, True
 
 
-def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=12,
+def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=256,
                   h_pad_frac=0.15, v_pad_frac=0.15, coverage_thresh=0.35,
-                  state_names=None):
+                  state_names=None, center_method="feature"):
     os.makedirs(out_dir, exist_ok=True)
     report_lines = []
 
@@ -106,13 +108,23 @@ def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=1
     report_lines.append(f"Detected {len(row_bands)} state(s): "
                          f"{list(zip(names, [len(c) for c in col_bands_per_row]))}")
 
-    # ---- Stage 2: extract every frame at full resolution, drift-corrected ----
+    # ---- Stage 2: crop every frame to a uniform canvas, then center the
+    #      character across the state's frames (see centering.py) ----
     all_frames = []  # list of (state_name, frame_idx, PIL.Image)
     for (rtop, rbot), col_bands, name in zip(row_bands, col_bands_per_row, names):
-        raw_frames = ef.extract_state(arr, is_char, rtop, rbot, col_bands,
-                                       h_pad_frac=h_pad_frac, v_pad_frac=v_pad_frac,
-                                       state_name=name)
-        for idx, frame_arr in enumerate(raw_frames):
+        fr_rgb, fr_mask, _ = ef.place_frames(arr, is_char, rtop, rbot, col_bands,
+                                             h_pad_frac=h_pad_frac,
+                                             v_pad_frac=v_pad_frac)
+        offsets, method_used = centering.compute_offsets(fr_rgb, fr_mask,
+                                                        method=center_method)
+        before = centering.residual_core_jitter(fr_mask)
+        fr_rgb, fr_mask = centering.apply_offsets(fr_rgb, fr_mask, offsets)
+        after = centering.residual_core_jitter(fr_mask)
+        report_lines.append(
+            f"  {name}: centering[{method_used}] offsets={offsets} "
+            f"core-jitter {before:.1f}px -> {after:.1f}px")
+
+        for idx, frame_arr in enumerate(fr_rgb):
             frame_img = Image.fromarray(frame_arr, "RGB")
             frame_img.save(os.path.join(out_dir, f"{name}_{idx:02d}_raw.png"))
             all_frames.append((name, idx, frame_img))
@@ -188,6 +200,13 @@ if __name__ == "__main__":
                      help="Min fraction of a source block that must be "
                           "foreground for the output pixel to count as character")
     ap.add_argument("--state-names", nargs="*", default=None)
+    ap.add_argument("--center-method", choices=["feature", "centroid", "bbox"],
+                     default="feature",
+                     help="How to align the character across a state's "
+                          "frames. feature=ORB keypoint match (robust to "
+                          "capes/hair/hands, needs OpenCV); centroid=head+"
+                          "torso center of mass; bbox=silhouette bbox "
+                          "midpoint (old behavior). Default: feature.")
     args = ap.parse_args()
 
     inputs, from_folder = resolve_inputs(args.input)
@@ -204,4 +223,4 @@ if __name__ == "__main__":
         print(f"\n=== {os.path.basename(img_path)} -> {out_dir}/ ===")
         run_pipeline(img_path, out_dir, args.target_size, args.n_colors,
                      args.h_pad_frac, args.v_pad_frac, args.coverage_thresh,
-                     args.state_names)
+                     args.state_names, args.center_method)

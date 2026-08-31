@@ -1,0 +1,6 @@
+numpy
+pillow
+# Used only by the default --center-method feature (ORB keypoint alignment).
+# If it's missing, centering automatically falls back to the pure-NumPy
+# "centroid" method.
+opencv-python-headless

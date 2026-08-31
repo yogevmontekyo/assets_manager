@@ -25,6 +25,8 @@ import argparse
 import numpy as np
 from PIL import Image, ImageDraw
 
+import centering
+
 BG_EXACT = (0, 255, 0)
 
 
@@ -63,19 +65,21 @@ def detect_cols(is_char, row_top, row_bot):
     return find_bands(col_has_char)
 
 
-def extract_state(arr, is_char, row_top, row_bot, col_bands, h_pad_frac=0.15,
-                   v_pad_frac=0.15, state_name="state"):
-    """Extract all frames for one animation row with horizontal drift correction.
+def place_frames(arr, is_char, row_top, row_bot, col_bands, h_pad_frac=0.15,
+                  v_pad_frac=0.15):
+    """Crop every frame of one animation row into ONE uniform canvas,
+    without any horizontal re-centering yet.
 
     Vertical: every frame uses the SAME [row_top, row_bot] slice from the
-    source (plus uniform top/bottom padding added equally to every frame),
-    so vertical motion (jump arcs etc.) is preserved untouched -- padding
-    just adds margin, it doesn't re-anchor per frame.
+    source plus uniform top/bottom padding, so vertical motion (jump arcs
+    etc.) is preserved untouched.
 
-    Horizontal: each frame's character bbox center is computed, then the
-    frame is placed into a uniform-width canvas so that center lands on the
-    canvas's horizontal center -- correcting any left/right drift between
-    frames.
+    Horizontal: each frame's source strip is dropped in at a FIXED left
+    margin (h_pad). Cross-frame alignment is a separate concern handled by
+    the `centering` module, which reads the returned masks.
+
+    Returns (frames_rgb, frames_mask, (canvas_w, canvas_h)) where
+    frames_mask[i] is the boolean character mask of frames_rgb[i].
     """
     row_h = row_bot - row_top + 1
     max_frame_w = max(c2 - c1 + 1 for c1, c2 in col_bands)
@@ -84,40 +88,45 @@ def extract_state(arr, is_char, row_top, row_bot, col_bands, h_pad_frac=0.15,
     canvas_w = max_frame_w + 2 * h_pad
     canvas_h = row_h + 2 * v_pad
 
-    frames = []
-    for idx, (c1, c2) in enumerate(col_bands):
+    frames_rgb, frames_mask = [], []
+    for (c1, c2) in col_bands:
         frame_src = arr[row_top:row_bot + 1, c1:c2 + 1]
-        frame_char_mask = is_char[row_top:row_bot + 1, c1:c2 + 1]
-
-        cols_with_char = np.where(frame_char_mask.any(axis=0))[0]
-        if len(cols_with_char) == 0:
-            char_center_x = (c2 - c1) / 2.0
-        else:
-            char_center_x = (cols_with_char[0] + cols_with_char[-1]) / 2.0
-
         canvas = np.full((canvas_h, canvas_w, 3), BG_EXACT, dtype=np.uint8)
-        target_center_x = canvas_w / 2.0
-        dst_left = int(round(target_center_x - char_center_x))
-
         src_w = frame_src.shape[1]
-        dst_start = max(dst_left, 0)
-        dst_end = min(dst_left + src_w, canvas_w)
-        src_start = max(0, -dst_left)
-        src_end = src_start + (dst_end - dst_start)
-
-        if dst_end > dst_start:
-            canvas[v_pad:v_pad + row_h, dst_start:dst_end] = frame_src[:, src_start:src_end]
+        canvas[v_pad:v_pad + row_h, h_pad:h_pad + src_w] = frame_src
 
         # re-clean any anti-aliased fringe introduced at crop edges
         cmask = is_background(canvas)
         canvas[cmask] = BG_EXACT
 
-        frames.append(canvas)
+        frames_rgb.append(canvas)
+        frames_mask.append(~cmask)
+
+    return frames_rgb, frames_mask, (canvas_w, canvas_h)
+
+
+def extract_state(arr, is_char, row_top, row_bot, col_bands, h_pad_frac=0.15,
+                   v_pad_frac=0.15, state_name="state", center_method="bbox"):
+    """Extract all frames for one animation row, cross-frame centered.
+
+    Thin wrapper: place_frames() to crop into a uniform canvas, then the
+    `centering` module to align the character across frames. Default
+    method is "bbox" (the historical behavior); the full pipeline in
+    main.py passes "feature".
+    """
+    frames_rgb, frames_mask, (canvas_w, canvas_h) = place_frames(
+        arr, is_char, row_top, row_bot, col_bands, h_pad_frac, v_pad_frac)
+
+    offsets, method_used = centering.compute_offsets(
+        frames_rgb, frames_mask, method=center_method)
+    frames_rgb, _ = centering.apply_offsets(frames_rgb, frames_mask, offsets)
+
+    for idx, (c1, c2) in enumerate(col_bands):
         print(f"  {state_name} frame {idx}: src cols [{c1}:{c2}] "
               f"(w={c2 - c1 + 1}) -> canvas {canvas_w}x{canvas_h}, "
-              f"char center shifted by {dst_left - 0}px")
+              f"centering[{method_used}] shift {offsets[idx]:+d}px")
 
-    return frames
+    return frames_rgb
 
 
 def make_contact_sheet(img, row_bands, col_bands_per_row, out_path):
