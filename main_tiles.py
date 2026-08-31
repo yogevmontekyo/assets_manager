@@ -129,7 +129,8 @@ def _segment_sources(spec):
 
 _SEG_DEFAULTS = dict(alpha_thresh=64, key_tol=60, key_margin=40, magenta_peel=2,
                      magenta_kill=False, min_area=150, min_dim=6,
-                     max_w_frac=0.30, max_h_frac=0.55, pad=1, close_px=0)
+                     max_w_frac=0.30, max_h_frac=0.55, pad=1, close_px=0,
+                     tile_art=16, grid_split=False, split_min_cov=0.15)
 
 
 def run_segment(spec, min_area=None):
@@ -187,6 +188,13 @@ def run_build(spec, out_root, dry_run=False):
     built = ta.build_atlas(spec)
     dest, lines = ta.write_delivery(out_root, spec, built, dry_run=dry_run)
     print("\n".join(lines))
+    if not dry_run:
+        cat = ta.write_asset_catalog(spec, dest)
+        if cat:
+            path, count = cat
+            print(f"wrote catalog.json  ({count} extra tiles + PNGs under catalog/)")
+        else:
+            print("catalog.json skipped (no segmentation catalogue -- run `segment` first)")
     print(f"-> {dest}/")
     return 0
 

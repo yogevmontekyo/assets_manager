@@ -21,8 +21,10 @@ guesses where a tile lives. Use ``ruler_overlay`` to read pixel coordinates
 off a source, and ``main_tiles.py --dry-run`` to preview every crop before
 packing.
 """
+import datetime
 import json
 import os
+import shutil
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -353,6 +355,129 @@ def write_delivery(out_root, spec, built, dry_run=False):
     with open(os.path.join(dest, "_report.txt"), "w") as f:
         f.write("\n".join(lines) + "\n")
     return dest, lines
+
+
+# --------------------------------------------------------------------------
+# asset catalogue for the game-engine workspace
+# --------------------------------------------------------------------------
+_ROLE_HINT_BY_NAME = [
+    ("waterfall", "water"), ("water", "water"),
+    ("parallax", "parallax"), ("background", "parallax"),
+    ("cloud", "parallax"), ("mountain", "parallax"), ("sky", "parallax"),
+    ("formation", "decoration"), ("decor", "decoration"), ("prop", "prop"),
+    ("hazard", "hazard"), ("enemy", "enemy"),
+    ("terrain", "tile_atlas"), ("tile", "tile_atlas"), ("style", "tile_atlas"),
+]
+
+
+def _role_hint(sheet_png, spec):
+    seg = spec.get("segment", {})
+    if sheet_png in seg.get("role_hints", {}):
+        return seg["role_hints"][sheet_png]
+    per = seg.get("per_source", {}).get(sheet_png, {})
+    if per.get("role"):
+        return per["role"]
+    low = sheet_png.lower()
+    for key, role in _ROLE_HINT_BY_NAME:
+        if key in low:
+            return role
+    return "tile_atlas"
+
+
+def write_asset_catalog(spec, delivery_dir):
+    """Companion to ``manifest.json`` for a workspace on the game-engine side.
+
+    Lists every EXTRA tile segmented from this delivery's source sheets
+    (``tile_segment.write_catalog`` output under ``tiles/<biome>/catalog/``),
+    copies the PNGs + montages into ``<delivery>/catalog/``, and tags each
+    sheet with a ``role_hint``. ``tools/ingest_assets.gd`` does not read this
+    file -- it's a menu for pulling additional assets in by hand.
+
+    Returns ``(catalog.json path, tile count)`` or ``None`` when there is no
+    segmentation catalogue to fold in (run ``segment`` / ``all`` first).
+    """
+    cat_src = os.path.join(spec["_dir"], "catalog")
+    if not os.path.isdir(cat_src):
+        return None
+
+    sheets = []
+    total = 0
+    for stem in sorted(os.listdir(cat_src)):
+        idx_path = os.path.join(cat_src, stem, "index.json")
+        if not os.path.isfile(idx_path):
+            continue
+        with open(idx_path) as f:
+            idx = json.load(f)
+        src_png = f"{stem}.png"
+        dst_dir = os.path.join(delivery_dir, "catalog", stem)
+        os.makedirs(dst_dir, exist_ok=True)
+
+        tiles = []
+        for t in idx.get("tiles", []):
+            fn = f"{int(t['id']):03d}.png"
+            src_file = os.path.join(cat_src, stem, fn)
+            if not os.path.isfile(src_file):
+                continue
+            shutil.copy2(src_file, os.path.join(dst_dir, fn))
+            tiles.append({
+                "id": t["id"],
+                "file": f"catalog/{stem}/{fn}",
+                "section": t.get("section"),
+                "art_size": t.get("art_size"),
+                "src_rect": t.get("src_rect"),
+                "colors": t.get("colors"),
+                "shaped": bool(t.get("shaped", False)),
+            })
+        montage_rel = None
+        m = os.path.join(cat_src, stem, "_montage.png")
+        if os.path.isfile(m):
+            shutil.copy2(m, os.path.join(dst_dir, "_montage.png"))
+            montage_rel = f"catalog/{stem}/_montage.png"
+
+        sheets.append({
+            "source": src_png,
+            "role_hint": _role_hint(src_png, spec),
+            "art_pixel_src_px": idx.get("art_pixel_src_px"),
+            "count": len(tiles),
+            "montage": montage_rel,
+            "tiles": tiles,
+        })
+        total += len(tiles)
+
+    if not sheets:
+        return None
+
+    doc = {
+        "schema": 1,
+        "kind": "asset-catalog",
+        "delivery": spec["delivery"],
+        "biome": spec.get("biome", ""),
+        "stage": spec.get("stage"),
+        "grid": int(spec["grid"]),
+        "generated": datetime.datetime.now(datetime.timezone.utc)
+                     .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "count": total,
+        "about": (
+            "Optional EXTRA tiles segmented from the same source sheets as this "
+            "delivery's manifest.json tile_atlas. tools/ingest_assets.gd does NOT "
+            "read this file. To use a tile: copy its `file` (path relative to "
+            "this folder) into assets/biomes/<biome>/<role-dir>/ or "
+            "assets/stages/<id>/..., then add an entry to a manifest.json with "
+            "`role` = the sheet's `role_hint` (docs/asset_pipeline.md lists the "
+            "per-role fields). `art_size` is the tile's native pixel size -- on "
+            "import scale it to a whole multiple of `grid`. `shaped` true = the "
+            "PNG has transparency (a prop/decoration silhouette); false = a full "
+            "opaque cell fit for a tile_atlas column. `src_rect` is the region "
+            "in the original source sheet. These PNGs are grid-snapped but NOT "
+            "palette-flattened -- quantise on import if a flat look is wanted."
+        ),
+        "sheets": sheets,
+    }
+    path = os.path.join(delivery_dir, "catalog.json")
+    with open(path, "w") as f:
+        json.dump(doc, f, indent=2)
+        f.write("\n")
+    return path, total
 
 
 # --------------------------------------------------------------------------

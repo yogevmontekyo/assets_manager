@@ -110,12 +110,15 @@ def foreground_mask(img, alpha_thresh=64, key=None, key_tol=60, key_margin=40):
 # --------------------------------------------------------------------------
 def _is_label_or_text(crop_rgb, comp_mask):
     """A section label pill / the NOTES box / stray text: the component's
-    pixels are overwhelmingly dark-navy + white (+ leftover key magenta)."""
+    pixels are overwhelmingly dark-navy + white (+ leftover key magenta).
+
+    Navy here means blue actually leads red (b >= r) -- so it doesn't catch
+    dark brown cave rock, which is red-dominant."""
     px = crop_rgb[comp_mask]
     if len(px) == 0:
         return True
-    r, g, b = px[:, 0], px[:, 1], px[:, 2]
-    navy = (r < 90) & (g < 90) & (b < 140)
+    r, g, b = px[:, 0].astype(int), px[:, 1].astype(int), px[:, 2].astype(int)
+    navy = (r < 80) & (g < 85) & (b < 130) & (b >= r)
     white = (r > 195) & (g > 195) & (b > 195)
     mag = (r > 170) & (b > 150) & (g < r - 35) & (g < b - 20)
     return float((navy | white | mag).mean()) > 0.72
@@ -142,36 +145,79 @@ def _low_variety(crop_rgb, comp_mask, min_colors=5):
 # --------------------------------------------------------------------------
 def segment(img, *, alpha_thresh=64, key=None, key_tol=60, key_margin=40,
             min_area=150, min_dim=6, max_w_frac=0.30, max_h_frac=0.55,
-            pad=1, close_px=0):
+            pad=1, close_px=0, open_px=0,
+            tile_px=None, grid_split=False, split_min_cov=0.15):
     """Return (list[component dict], mask_tag). Each dict:
         src_rect  [x, y, w, h]  in ORIGINAL source pixels (padded, clipped)
         area      foreground pixel count
         fill      area / bbox area
     in reading order.
+
+    ``tile_px`` (w, h) in source px -- one tile's footprint. When given and
+    ``grid_split`` is on, a connected component more than ~1.6 tiles wide or
+    tall (a strip of tiles butted together with no key gap between them, e.g.
+    the cave sheets) is sliced into a ``round(w/tile_w) x round(h/tile_h)``
+    grid; cells with < ``split_min_cov`` foreground are dropped. Components
+    that are already ~one tile pass through untouched (the alpine sheets).
     """
     import cv2
 
     W, H = img.size
     mask, tag, _key = foreground_mask(img, alpha_thresh, key, key_tol, key_margin)
     if close_px > 0:
-        k = np.ones((close_px, close_px), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE,
+                                np.ones((close_px, close_px), np.uint8))
+    if open_px > 0:
+        # erode+dilate: snaps the thin bridges where tiles touch at a corner
+        # / share a 1px seam, so connected components separates butted tiles.
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,
+                                np.ones((open_px, open_px), np.uint8))
 
     rgb = np.asarray(img.convert("RGB"))
     n, lab, stats, _ = cv2.connectedComponentsWithStats(mask, 8)
 
-    comps = []
+    tpw = tile_px[0] if tile_px else None
+    tph = tile_px[1] if tile_px else None
+    raw = []          # (x, y, w, h) boxes, big strips already split
     for i in range(1, n):
         x, y, w, h, area = (int(v) for v in stats[i])
         if area < min_area or w < min_dim or h < min_dim:
             continue
-        if w > max_w_frac * W or h > max_h_frac * H:
-            continue
-        if w >= 2.8 * h and h <= 32:                       # label pill / rule
+        if w >= 2.8 * h and h <= 44:                       # label pill / title / rule
             continue
         cm = (lab[y:y + h, x:x + w] == i)
+
+        # A strip of tiles butted together with no key gap -> slice on the
+        # tile grid. Content filters (text / low-variety) are skipped for it:
+        # a whole butted row of flat dark rock legitimately looks "low variety".
+        big = grid_split and tpw and (w > 1.6 * tpw or h > 1.6 * tph)
+        if big:
+            nx = max(1, int(round(w / tpw)))
+            ny = max(1, int(round(h / tph)))
+            if nx * ny >= 2:
+                xs = np.linspace(x, x + w, nx + 1).round().astype(int)
+                ys = np.linspace(y, y + h, ny + 1).round().astype(int)
+                for gy in range(ny):
+                    for gx in range(nx):
+                        cx0, cx1 = xs[gx], xs[gx + 1]
+                        cy0, cy1 = ys[gy], ys[gy + 1]
+                        cell = cm[cy0 - y:cy1 - y, cx0 - x:cx1 - x]
+                        if cell.size and cell.mean() >= split_min_cov:
+                            raw.append((cx0, cy0, cx1 - cx0, cy1 - cy0))
+                continue
+
         cr = rgb[y:y + h, x:x + w]
         if _is_label_or_text(cr, cm) or _is_magenta(cr, cm) or _low_variety(cr, cm):
+            continue
+        raw.append((x, y, w, h))
+
+    comps = []
+    for x, y, w, h in raw:
+        if w > max_w_frac * W or h > max_h_frac * H:
+            continue
+        sub = mask[y:y + h, x:x + w]
+        area = int(sub.sum())
+        if area < min_area:
             continue
         px0, py0 = max(0, x - pad), max(0, y - pad)
         px1, py1 = min(W, x + w + pad), min(H, y + h + pad)
@@ -262,9 +308,12 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
 
     peel = int(seg_kw.pop("magenta_peel", 2))
     mag_kill = bool(seg_kw.pop("magenta_kill", False))
+    tile_art = int(seg_kw.pop("tile_art", 16))
     os.makedirs(out_dir, exist_ok=True)
-    comps, tag = segment(img, **seg_kw)
+
     native, cw, ch = _native(img, native_override, sample_frac)
+    seg_kw.setdefault("tile_px", (tile_art * cw, tile_art * ch))
+    comps, tag = segment(img, **seg_kw)
     sections = sections or []
 
     # One native-resolution RGBA version with the background cut out, so both
@@ -330,8 +379,16 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
         aw, ah = min(aw, native.width - ax), min(ah, native.height - ay)
         tile = native_cut.crop((ax, ay, ax + aw, ay + ah))
         tile.save(os.path.join(out_dir, f"{c['id']:03d}.png"))
-        vis = np.asarray(tile)
-        vis = vis[vis[..., 3] > 0][:, :3]
+        arr = np.asarray(tile)
+        alpha = arr[..., 3] > 0
+        vis = arr[alpha][:, :3]
+        # "full rectangular tile" = opaque pixels reach all four edges (a
+        # terrain cell); a prop/decoration silhouette (stalactite, cloud,
+        # crystal) only touches one edge or floats. Measured 1px in so the
+        # transparent pad frame doesn't count.
+        k = 1 if min(alpha.shape) > 4 else 0
+        edges = (alpha[k].mean(), alpha[-1 - k].mean(),
+                 alpha[:, k].mean(), alpha[:, -1 - k].mean())
         index.append({
             "id": c["id"],
             "section": _section_of(c["src_rect"], sections),
@@ -340,6 +397,8 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
             "art_size": [int(aw), int(ah)],
             "colors": int(len(np.unique(vis, axis=0))) if len(vis) else 0,
             "fill": c["fill"],
+            "opaque_frac": round(float(alpha.mean()), 3),
+            "shaped": bool(min(edges) < 0.4),
         })
 
     _contact_sheet(img, comps, os.path.join(out_dir, "_contact_sheet.png"))
