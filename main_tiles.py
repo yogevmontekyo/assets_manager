@@ -190,11 +190,14 @@ def run_build(spec, out_root, dry_run=False):
     print("\n".join(lines))
     if not dry_run:
         cat = ta.write_asset_catalog(spec, dest)
+        doc = None
         if cat:
-            path, count = cat
-            print(f"wrote catalog.json  ({count} extra tiles + PNGs under catalog/)")
+            _path, doc = cat
+            print(f"wrote catalog.json  ({doc['count']} extra tiles + PNGs under catalog/)")
         else:
             print("catalog.json skipped (no segmentation catalogue -- run `segment` first)")
+        ta.write_delivery_readme(spec, dest, built["manifest"], doc)
+        print("wrote README.md")
     print(f"-> {dest}/")
     return 0
 

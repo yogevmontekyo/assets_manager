@@ -404,7 +404,7 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
     _contact_sheet(img, comps, os.path.join(out_dir, "_contact_sheet.png"))
     _montage(native_cut, cw, ch, comps, os.path.join(out_dir, "_montage.png"),
              upscale)
-    with open(os.path.join(out_dir, "index.json"), "w") as f:
+    with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:
         json.dump({"sheet": sheet_name, "mask": tag, "count": len(index),
                    "art_pixel_src_px": [round(cw, 4), round(ch, 4)],
                    "tiles": index}, f, indent=2)
