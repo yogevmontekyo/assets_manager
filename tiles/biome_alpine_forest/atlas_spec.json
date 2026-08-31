@@ -1,0 +1,30 @@
+{
+  "delivery": "alpine-forest-tiles-01",
+  "biome": "foothill_forest",
+  "stage": null,
+  "grid": 32,
+  "background": "opaque",
+  "source_key": null,
+  "sample_frac": 0.5,
+  "palette_colors": 24,
+  "segment": {
+    "sources": ["style_sheet.png", "waterfall_tiles.png", "background_mountains.png", "background_clouds.png"],
+    "min_area": 150,
+    "key_tol": 60,
+    "key_margin": 32,
+    "magenta_peel": 2,
+    "pad": 1,
+    "close_px": 0,
+    "per_source": {
+      "waterfall_tiles.png": { "magenta_kill": true },
+      "background_clouds.png": { "magenta_kill": true },
+      "background_mountains.png": { "magenta_peel": 1 }
+    }
+  },
+  "tiles": [
+    { "col": 0, "name": "ground_sub",  "collision": "full", "src": "style_sheet.png", "rect": [689, 115, 43, 50] },
+    { "col": 1, "name": "ground_top",  "collision": "full", "src": "style_sheet.png", "rect": [690, 45, 42, 49] },
+    { "col": 2, "name": "platform",    "collision": "top",  "src": "style_sheet.png", "rect": [1163, 386, 70, 33] },
+    { "col": 3, "name": "block",       "collision": "full", "src": "style_sheet.png", "rect": [981, 115, 38, 50] }
+  ]
+}

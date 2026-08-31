@@ -153,8 +153,13 @@ def _offsets_feature(frames_rgb, masks, W, min_matches=8):
             if len(nxt) < 5:
                 break
             keep = nxt
-        offs[i] = ref_off + float(np.median(keep))
-        matched += 1
+        shift = float(np.median(keep))
+        # a degenerate frame (nearly empty, few keypoints) can yield a wild
+        # match; a real inter-frame drift is never half the canvas, so
+        # reject that and keep this frame's centroid fallback.
+        if abs(shift) <= 0.5 * W:
+            offs[i] = ref_off + shift
+            matched += 1
 
     # if hardly any frame produced a usable match (low-texture / tiny
     # sprite) the ORB estimate is untrustworthy -- let the caller fall back

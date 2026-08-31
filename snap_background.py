@@ -197,6 +197,37 @@ def snap_palette(img_rgb, n_colors):
     return q.convert("RGB")
 
 
+KEY_COLORS = {"magenta": (255, 0, 255), "green": (0, 255, 0),
+              "black": (0, 0, 0), "white": (255, 255, 255)}
+
+
+def parse_key_color(spec):
+    """'magenta' / 'green' / '#rrggbb' / 'r,g,b' -> (r, g, b)."""
+    if spec is None:
+        return None
+    s = str(spec).strip().lower()
+    if s in KEY_COLORS:
+        return KEY_COLORS[s]
+    if s.startswith("#") and len(s) == 7:
+        return tuple(int(s[i:i + 2], 16) for i in (1, 3, 5))
+    if "," in s:
+        parts = [int(p) for p in s.split(",")]
+        if len(parts) == 3:
+            return tuple(parts)
+    raise SystemExit(f"bad --key-color: {spec!r} "
+                     f"(use magenta/green/black/white, #rrggbb, or r,g,b)")
+
+
+def key_out(img, key_rgb, tol=40):
+    """RGB image -> RGBA, alpha 0 where the pixel is within `tol` (per-
+    channel sum) of key_rgb. A tolerance because palette-snap / JPEG nudge
+    the key colour a little off its nominal value."""
+    a = np.asarray(img.convert("RGB")).astype(int)
+    dist = np.abs(a - np.array(key_rgb)).sum(axis=2)
+    alpha = np.where(dist <= tol, 0, 255).astype(np.uint8)
+    return Image.fromarray(np.dstack([a.astype(np.uint8), alpha]), "RGBA")
+
+
 # --------------------------------------------------------------------------
 # 4. upscale to target
 # --------------------------------------------------------------------------
@@ -232,7 +263,7 @@ def upscale_to_target(native_rgb, target_w, target_h, fit="crop",
 # --------------------------------------------------------------------------
 def process(input_path, out_dir, target_w, target_h, fit, anchor="center",
             force_cols=None, force_rows=None, sample_frac=0.5, colors=0,
-            scale=None, preview=True):
+            scale=None, preview=True, key_rgb=None, key_tol=40):
     os.makedirs(out_dir, exist_ok=True)
     src = Image.open(input_path).convert("RGB")
     arr = np.asarray(src)
@@ -274,6 +305,15 @@ def process(input_path, out_dir, target_w, target_h, fit, anchor="center",
             final = upscale_to_target(native, target_w, target_h, fit, anchor)
             fw, fh = target_w, target_h
 
+        prev = native.resize((ncols * 4, nrows * 4), Image.NEAREST)
+        if key_rgb is not None:
+            native = key_out(native, key_rgb, key_tol)
+            final = key_out(final, key_rgb, key_tol)
+            prev = key_out(prev, key_rgb, key_tol)
+            n_keyed = int((np.asarray(native)[..., 3] == 0).sum())
+            print(f"    keyed out {key_rgb} -> {n_keyed}/{ncols * nrows} "
+                  f"native cells transparent")
+
         tag = f"_{i}" if multi else ""
         native_path = os.path.join(out_dir, f"{stem}{tag}_native_{ncols}x{nrows}.png")
         final_path = os.path.join(out_dir, f"{stem}{tag}_{fw}x{fh}.png")
@@ -282,7 +322,6 @@ def process(input_path, out_dir, target_w, target_h, fit, anchor="center",
         print(f"    {native_path}")
         print(f"    {final_path}")
         if preview:
-            prev = native.resize((ncols * 4, nrows * 4), Image.NEAREST)
             prev.save(os.path.join(out_dir, f"{stem}{tag}_native_preview4x.png"))
 
     print(f"Done -> {out_dir}/")
@@ -317,10 +356,24 @@ if __name__ == "__main__":
                          "no dithering (e.g. 48) so outlines stop being a "
                          "soft gradient; 0 = keep all colours")
     ap.add_argument("--no-preview", action="store_true")
+    ap.add_argument("--transparent", action="store_true",
+                    help="Write RGBA and make the key colour transparent "
+                         "(default key: magenta -- common for tileset sheets).")
+    ap.add_argument("--key-color", default=None,
+                    help="Colour to make transparent: magenta/green/black/"
+                         "white, #rrggbb, or r,g,b. Implies --transparent.")
+    ap.add_argument("--key-tol", type=int, default=40,
+                    help="Per-channel sum tolerance for the key-colour match "
+                         "(palette snap / JPEG nudge it a little). Default 40.")
     args = ap.parse_args()
+
+    key_rgb = None
+    if args.transparent or args.key_color:
+        key_rgb = parse_key_color(args.key_color or "magenta")
 
     out_dir = args.out_dir or os.path.join(
         os.path.dirname(os.path.abspath(args.input)) or ".", "snapped")
     process(args.input, out_dir, args.width, args.height, args.fit, args.anchor,
             args.native_cols, args.native_rows, args.sample_frac, args.colors,
-            args.scale, preview=not args.no_preview)
+            args.scale, preview=not args.no_preview,
+            key_rgb=key_rgb, key_tol=args.key_tol)

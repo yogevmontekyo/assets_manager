@@ -30,8 +30,11 @@ import centering
 BG_EXACT = (0, 255, 0)
 
 
-def is_background(arr, g_thresh=140, margin=60):
-    """Boolean mask: True where pixel is chroma-green background."""
+def is_background(arr, g_thresh=115, margin=42):
+    """Boolean mask: True where pixel is chroma-green background. The key is
+    wide on purpose -- the source green runs from bright lime to a murky
+    dark green along edges -- so this catches a pixel wherever green
+    clearly leads red and blue. Keep in sync with pixelate.is_background."""
     r, g, b = arr[:, :, 0].astype(int), arr[:, :, 1].astype(int), arr[:, :, 2].astype(int)
     return (g > g_thresh) & (g > r + margin) & (g > b + margin)
 
@@ -54,15 +57,32 @@ def find_bands(mask_1d):
     return bands
 
 
+def _bands_from_counts(counts, min_frac=0.12, min_span=4):
+    """Bands of a 1-D projection, but robust to noise: a slot counts as
+    'occupied' only if it has more than a small fraction of the peak's
+    pixels (kills a stray AA speck or a motion-blur wisp bridging two
+    frames), and any resulting band narrower than `min_frac` of the widest
+    band (or `min_span` px) is dropped as a sliver, not a real frame/row."""
+    counts = np.asarray(counts)
+    peak = counts.max() if counts.size else 0
+    if peak <= 0:
+        return []
+    noise = max(1.0, 0.02 * peak)
+    bands = find_bands(counts > noise)
+    if not bands:
+        return []
+    widest = max(e - s + 1 for s, e in bands)
+    keep_min = max(min_span, int(min_frac * widest))
+    return [(s, e) for s, e in bands if (e - s + 1) >= keep_min]
+
+
 def detect_rows(is_char):
-    row_has_char = is_char.any(axis=1)
-    return find_bands(row_has_char)
+    return _bands_from_counts(is_char.sum(axis=1))
 
 
 def detect_cols(is_char, row_top, row_bot):
     row_slice = is_char[row_top:row_bot + 1]
-    col_has_char = row_slice.any(axis=0)
-    return find_bands(col_has_char)
+    return _bands_from_counts(row_slice.sum(axis=0))
 
 
 def place_frames(arr, is_char, row_top, row_bot, col_bands, h_pad_frac=0.15,

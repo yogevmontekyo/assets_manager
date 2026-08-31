@@ -28,9 +28,10 @@ When the source is a folder (the default), each image's outputs go in their
 own subfolder of --out-dir (named after the image) so frames don't collide.
 A single explicit file writes straight into --out-dir.
 
-Outputs (in --out-dir[/<image-name>]):
+Outputs (in --out-dir[/<image-name>]; green background, or transparent
+RGBA with --transparent):
     <state>_<NN>_raw.png        full-res, padded, cross-frame-centered crop
-    <state>_<NN>.png            final clean pixel-art frame (target_size^2)
+    <state>_<NN>.png            final clean pixel-art frame
     <state>_<NN>_preview.png    8x nearest-neighbor upscale for inspection
     _contact_sheet.png          detected row/frame boundaries overlaid on source
     _palette_swatch.png         the shared locked palette
@@ -64,6 +65,31 @@ DEFAULT_OUT_DIR = os.path.join(_PROJECT_DIR, "Output_Sprite_Sheet")
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
 
 
+def _keyed_rgba(rgb):
+    """RGB image/array whose background is exact key-green -> RGBA with
+    alpha 0 there, 255 everywhere else. The pipeline's silhouette is a hard
+    binary edge, so the alpha channel is binary too (no soft matte)."""
+    arr = np.asarray(rgb.convert("RGB") if isinstance(rgb, Image.Image) else rgb)
+    opaque = np.any(arr != px.BG_EXACT, axis=-1)
+    rgba = np.dstack([arr, np.where(opaque, 255, 0).astype(np.uint8)])
+    return Image.fromarray(rgba, "RGBA")
+
+
+def load_greenscreen(path, alpha_thresh=64):
+    """Load a source sheet as RGB on the green sentinel the pipeline keys
+    on. If the file is already alpha-transparent (e.g. an exported sprite
+    with no green screen), its near-transparent pixels (alpha <
+    alpha_thresh) are painted green so the rest of the pipeline is
+    unchanged; translucent-but-visible pixels (a wing, a ghost) stay."""
+    im = Image.open(path)
+    if im.mode in ("RGBA", "LA", "PA") or (im.mode == "P" and "transparency" in im.info):
+        rgba = np.array(im.convert("RGBA"))
+        rgb = rgba[..., :3].copy()
+        rgb[rgba[..., 3] < alpha_thresh] = px.BG_EXACT
+        return Image.fromarray(rgb, "RGB")
+    return im.convert("RGB")
+
+
 def resolve_inputs(input_arg):
     """Return (list_of_image_paths, from_folder).
 
@@ -71,7 +97,9 @@ def resolve_inputs(input_arg):
     - input_arg a folder  -> every image in that folder
     - input_arg a file    -> just that file
     from_folder is True in the first two cases; callers use it to decide
-    whether to nest each image's output in its own subfolder.
+    whether to nest each image's output in its own subfolder. When scanning
+    a folder, files whose name starts with "_" are skipped (scratch /
+    fixtures like _test_sheet.png) -- name one explicitly to run it.
     """
     if input_arg and os.path.isfile(input_arg):
         return [input_arg], False
@@ -80,7 +108,7 @@ def resolve_inputs(input_arg):
     if not os.path.isdir(folder):
         raise SystemExit(f"Input not found: {folder}")
     imgs = sorted(os.path.join(folder, f) for f in os.listdir(folder)
-                  if f.lower().endswith(IMAGE_EXTS))
+                  if f.lower().endswith(IMAGE_EXTS) and not f.startswith("_"))
     if not imgs:
         raise SystemExit(f"No images ({', '.join(IMAGE_EXTS)}) found in {folder}")
     return imgs, True
@@ -88,12 +116,14 @@ def resolve_inputs(input_arg):
 
 def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=256,
                   h_pad_frac=0.15, v_pad_frac=0.15, coverage_thresh=0.35,
-                  state_names=None, center_method="feature"):
+                  state_names=None, center_method="feature",
+                  downscale_method="median", sample_frac=0.6,
+                  palette_merge_dist=10, transparent=False, alpha_thresh=64):
     os.makedirs(out_dir, exist_ok=True)
     report_lines = []
 
     # ---- Stage 1: detect rows (states) and columns (frames) ----
-    img = Image.open(input_path).convert("RGB")
+    img = load_greenscreen(input_path, alpha_thresh)
     arr = np.array(img)
     is_char = ~ef.is_background(arr)
 
@@ -129,8 +159,9 @@ def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=2
 
         for idx, frame_arr in enumerate(fr_rgb):
             frame_img = Image.fromarray(frame_arr, "RGB")
-            frame_img.save(os.path.join(out_dir, f"{name}_{idx:02d}_raw.png"))
-            all_frames.append((name, idx, frame_img))
+            raw_out = _keyed_rgba(frame_arr) if transparent else frame_img
+            raw_out.save(os.path.join(out_dir, f"{name}_{idx:02d}_raw.png"))
+            all_frames.append((name, idx, frame_img))  # RGB for downscale
 
     # ---- Stage 3: coverage-aware downscale every frame (no quantize yet) ----
     # target_size is the output HEIGHT; width is derived per-state from that
@@ -148,24 +179,28 @@ def run_pipeline(input_path, out_dir=DEFAULT_OUT_DIR, target_size=96, n_colors=2
             report_lines.append(f"  {name}: source aspect {src_w}x{src_h} "
                                  f"({src_w/src_h:.3f}) -> output {tw}x{th} "
                                  f"({tw/th:.3f})")
-        down = px.coverage_aware_downscale(frame_img, state_target_dims[name], coverage_thresh)
+        down = px.coverage_aware_downscale(frame_img, state_target_dims[name],
+                                           coverage_thresh, downscale_method,
+                                           sample_frac)
         downscaled.append((name, idx, down))
         fg_pixel_pools.append(px.foreground_pixels_of_downscaled(down))
 
     # ---- Stage 4: build ONE shared palette across every frame in the sheet ----
-    shared_palette = px.build_shared_palette(fg_pixel_pools, n_colors=n_colors)
+    shared_palette = px.build_shared_palette(fg_pixel_pools, n_colors=n_colors,
+                                             merge_dist=palette_merge_dist)
     make_palette_swatch(shared_palette, os.path.join(out_dir, "_palette_swatch.png"))
-    report_lines.append(f"Shared palette ({n_colors} colors) built from "
-                         f"{len(downscaled)} frame(s): "
+    report_lines.append(f"Shared palette: {len(shared_palette)} colors "
+                         f"(cap {n_colors}, merge-dist {palette_merge_dist}) "
+                         f"from {len(downscaled)} frame(s): "
                          f"{[tuple(int(v) for v in c) for c in shared_palette]}")
 
     # ---- Stage 5: quantize every frame against the shared palette ----
     for name, idx, down in downscaled:
         final_img, _ = px.quantize_locked(down, fixed_palette_rgb=shared_palette)
-        out_path = os.path.join(out_dir, f"{name}_{idx:02d}.png")
-        final_img.save(out_path)
-        fw, fh = final_img.size
-        final_img.resize((fw * 8, fh * 8), Image.NEAREST).save(
+        save_img = _keyed_rgba(final_img) if transparent else final_img
+        save_img.save(os.path.join(out_dir, f"{name}_{idx:02d}.png"))
+        fw, fh = save_img.size
+        save_img.resize((fw * 8, fh * 8), Image.NEAREST).save(
             os.path.join(out_dir, f"{name}_{idx:02d}_preview.png"))
 
         check = px.verify_clean(final_img)
@@ -196,14 +231,42 @@ if __name__ == "__main__":
                           "derived per-state to preserve the source crop's "
                           "aspect ratio (not forced square)")
     ap.add_argument("--n-colors", type=int, default=256,
-                     help="Size of the shared locked palette (excl. "
+                     help="Upper bound on the shared locked palette (excl. "
                           "background), max 256. Lower it (e.g. 12-32) for a "
                           "flatter retro look. Default: 256.")
+    ap.add_argument("--palette-merge-dist", type=float, default=10.0,
+                     help="Collapse palette entries within this RGB distance "
+                          "of a more-common one. Removes the near-duplicate "
+                          "colors that make frames shimmer at high "
+                          "--n-colors. 0 = keep every entry. Default: 10.")
+    ap.add_argument("--transparent", action="store_true",
+                     help="Write the frames as RGBA with a transparent "
+                          "background instead of a solid green fill. The "
+                          "silhouette is a hard edge so the alpha is binary.")
+    ap.add_argument("--alpha-thresh", type=int, default=64,
+                     help="If the SOURCE is already alpha-transparent (no "
+                          "green screen), pixels with alpha below this become "
+                          "background. The default drops faint halos / motion "
+                          "trails that would otherwise split frame detection; "
+                          "lower it (e.g. 16) to keep faint translucency, "
+                          "raise it for a harder cut. Ignored for RGB sources.")
     ap.add_argument("--h-pad-frac", type=float, default=0.15)
     ap.add_argument("--v-pad-frac", type=float, default=0.15)
     ap.add_argument("--coverage-thresh", type=float, default=0.35,
                      help="Min fraction of a source block that must be "
                           "foreground for the output pixel to count as character")
+    ap.add_argument("--downscale", choices=["median", "center", "mean"],
+                     default="median", dest="downscale_method",
+                     help="How each source block picks its output color. "
+                          "median=whole-block per-channel median, keeps "
+                          "outlines from bleeding (default, crisp); "
+                          "center=median of only the block's central region "
+                          "(crispest, tune --sample-frac); mean=whole-block "
+                          "average (softest, the pre-2026-09 behavior).")
+    ap.add_argument("--sample-frac", type=float, default=0.6,
+                     help="For --downscale center: fraction of each block "
+                          "(centered) to sample; lower = crisper, more "
+                          "aliasing (0.4-0.8 is sensible). Default: 0.6.")
     ap.add_argument("--state-names", nargs="*", default=None)
     ap.add_argument("--center-method", choices=["feature", "centroid", "bbox"],
                      default="feature",
@@ -228,4 +291,7 @@ if __name__ == "__main__":
         print(f"\n=== {os.path.basename(img_path)} -> {out_dir}/ ===")
         run_pipeline(img_path, out_dir, args.target_size, args.n_colors,
                      args.h_pad_frac, args.v_pad_frac, args.coverage_thresh,
-                     args.state_names, args.center_method)
+                     args.state_names, args.center_method,
+                     args.downscale_method, args.sample_frac,
+                     args.palette_merge_dist, args.transparent,
+                     args.alpha_thresh)

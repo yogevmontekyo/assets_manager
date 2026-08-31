@@ -3,6 +3,12 @@
 /Output_Sprite_Sheet/
 /background_image/snapped/
 
+# Tile-atlas pipeline: generated deliveries + authoring aids
+/Deliveries/
+tiles/**/*_ruler*.png
+tiles/**/*_native.png
+tiles/**/catalog/
+
 # Python
 __pycache__/
 *.pyc
