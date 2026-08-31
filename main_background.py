@@ -23,16 +23,11 @@ Usage:
     # just NEAREST-upscale the snapped native image 4x, nothing else
     python3 main_background.py --scale 4
 
-    # tileset sheet -> transparent (keys out magenta by default)
-    python3 main_background.py sheet.png --transparent
-    python3 main_background.py sheet.png --key-color green --scale 4
-
 Output file names (in --out-dir, one flat folder -- names are prefixed with
 the source stem, and with _<i> for panel i of a multi-panel sheet):
     <stem>[_<i>]_native_<C>x<R>.png     the image at its true pixel grid
     <stem>[_<i>]_<W>x<H>.png            upscaled to the target / --scale
     <stem>[_<i>]_native_preview4x.png   4x NEAREST preview of the native
-With --transparent the outputs are RGBA with the key colour made clear.
 """
 import argparse
 import os
@@ -56,7 +51,7 @@ def resolve_inputs(input_arg):
     if not os.path.isdir(folder):
         raise SystemExit(f"Input not found: {folder}")
     imgs = sorted(os.path.join(folder, f) for f in os.listdir(folder)
-                  if f.lower().endswith(IMAGE_EXTS) and not f.startswith("_")
+                  if f.lower().endswith(IMAGE_EXTS)
                   and os.path.isfile(os.path.join(folder, f)))
     if not imgs:
         raise SystemExit(f"No images ({', '.join(IMAGE_EXTS)}) found in {folder}")
@@ -93,20 +88,7 @@ if __name__ == "__main__":
                     help="Snap the native image to this many flat colours, no "
                          "dithering (e.g. 48); 0 = keep all colours")
     ap.add_argument("--no-preview", action="store_true")
-    ap.add_argument("--transparent", action="store_true",
-                    help="Write RGBA and make the key colour transparent "
-                         "(default key: magenta -- common for tileset sheets).")
-    ap.add_argument("--key-color", default=None,
-                    help="Colour to make transparent: magenta/green/black/"
-                         "white, #rrggbb, or r,g,b. Implies --transparent.")
-    ap.add_argument("--key-tol", type=int, default=40,
-                    help="Per-channel sum tolerance for the key-colour match. "
-                         "Default 40.")
     args = ap.parse_args()
-
-    key_rgb = None
-    if args.transparent or args.key_color:
-        key_rgb = sb.parse_key_color(args.key_color or "magenta")
 
     inputs = resolve_inputs(args.input)
     print(f"Processing {len(inputs)} image(s) -> {args.out_dir}/")
@@ -115,5 +97,4 @@ if __name__ == "__main__":
         sb.process(img_path, args.out_dir, args.width, args.height, args.fit,
                    args.anchor, args.native_cols, args.native_rows,
                    args.sample_frac, args.colors, args.scale,
-                   preview=not args.no_preview,
-                   key_rgb=key_rgb, key_tol=args.key_tol)
+                   preview=not args.no_preview)
