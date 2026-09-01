@@ -130,7 +130,8 @@ def _segment_sources(spec):
 _SEG_DEFAULTS = dict(alpha_thresh=64, key_tol=60, key_margin=40, magenta_peel=2,
                      magenta_kill=False, min_area=150, min_dim=6,
                      max_w_frac=0.30, max_h_frac=0.55, pad=1, close_px=0,
-                     tile_art=16, grid_split=False, split_min_cov=0.15)
+                     tile_art=16, grid_split=False, split_min_cov=0.15,
+                     size_table=False, alpha_bin=128, chroma=None)
 
 
 def run_segment(spec, min_area=None):
@@ -162,10 +163,14 @@ def run_segment(spec, min_area=None):
         sections = tseg.load_sections(sec_path)
         out_dir = os.path.join(cat_root, stem)
         kw = {**base, **per_source.get(name, {})}
+        role = ta._role_hint(name, spec)
+        if role == "parallax":
+            kw["size_table"] = False      # big scrolling layers are never cell-fit
         index, tag = tseg.write_catalog(
             img, out_dir, sheet_name=stem, sections=sections,
             native_override=spec.get("sources", {}).get(name),
-            sample_frac=sample_frac, key=keys.get(name), **kw)
+            sample_frac=sample_frac, key=keys.get(name),
+            grid=int(spec.get("grid", 32)), role=role, **kw)
         secs = sorted({t["section"] for t in index if t["section"]})
         print(f"  {name}: {len(index)} tiles  (mask: {tag})"
               + (f"  sections: {', '.join(secs)}" if secs else "")

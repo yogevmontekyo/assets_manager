@@ -17,6 +17,8 @@
     "grid_split": true,
     "pad": 1,
     "close_px": 0,
+    "size_table": true,
+    "alpha_bin": 128,
     "per_source": {
       "terrain_tiles.png": { "magenta_peel": 1 },
       "water_tiles.png": { "magenta_kill": true },

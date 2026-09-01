@@ -8,23 +8,41 @@
   "sample_frac": 0.5,
   "palette_colors": 24,
   "segment": {
-    "sources": ["style_sheet.png", "waterfall_tiles.png", "background_mountains.png", "background_clouds.png"],
+    "sources": [
+      "terrain_tiles.png",
+      "decorations.png",
+      "tree_decorations.png",
+      "rock_eng_decor.png",
+      "village_decorations.png",
+      "water_decorations.png",
+      "waterfall_tiles.png",
+      "background_mountains.png",
+      "background_clouds.png"
+    ],
     "min_area": 150,
     "key_tol": 60,
     "key_margin": 32,
     "magenta_peel": 2,
     "pad": 1,
     "close_px": 0,
+    "size_table": true,
+    "alpha_bin": 128,
     "per_source": {
+      "terrain_tiles.png": { "magenta_kill": true },
+      "tree_decorations.png": { "magenta_kill": true },
+      "rock_eng_decor.png": { "magenta_kill": true },
+      "village_decorations.png": { "magenta_kill": true },
+      "water_decorations.png": { "magenta_kill": true },
+      "decorations.png": { "magenta_peel": 2 },
       "waterfall_tiles.png": { "magenta_kill": true },
       "background_clouds.png": { "magenta_kill": true },
-      "background_mountains.png": { "magenta_peel": 1 }
+      "background_mountains.png": { "magenta_peel": 1, "size_table": false }
     }
   },
   "tiles": [
-    { "col": 0, "name": "ground_sub",  "collision": "full", "src": "style_sheet.png", "rect": [689, 115, 43, 50] },
-    { "col": 1, "name": "ground_top",  "collision": "full", "src": "style_sheet.png", "rect": [690, 45, 42, 49] },
-    { "col": 2, "name": "platform",    "collision": "top",  "src": "style_sheet.png", "rect": [1163, 386, 70, 33] },
-    { "col": 3, "name": "block",       "collision": "full", "src": "style_sheet.png", "rect": [981, 115, 38, 50] }
+    { "col": 0, "name": "ground_sub",  "collision": "full", "src": "terrain_tiles.png", "rect": [1066, 872, 88, 100] },
+    { "col": 1, "name": "ground_top",  "collision": "full", "src": "terrain_tiles.png", "rect": [29, 40, 103, 100] },
+    { "col": 2, "name": "platform",    "collision": "top",  "src": "terrain_tiles.png", "rect": [315, 30, 111, 92] },
+    { "col": 3, "name": "block",       "collision": "full", "src": "terrain_tiles.png", "rect": [173, 40, 98, 100] }
   ]
 }

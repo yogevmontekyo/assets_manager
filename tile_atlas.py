@@ -183,9 +183,13 @@ def snap_tile(native_img, cell_w, cell_h, rect_src, grid, sample_frac=0.5,
     RGB tile.
 
     ``rect_src`` is mapped into native space by dividing by ``cell_*``. If the
-    native tile is already <= ``grid`` on both axes it is NEAREST-upscaled
-    (hard edges kept); if larger it is reduced with the central-median
-    downscale (``snap_background.snap_to_native``).
+    native tile is >= ``grid`` on both axes it is reduced with the central-
+    median downscale (``snap_background.snap_to_native``) -- crisp, no blur.
+    If it is *smaller* than ``grid`` on either axis the source simply does not
+    carry ``grid`` px of real art there: it is NEAREST-blown-up to fill the
+    cell (hard edges, but fake resolution) and the returned tuple's third
+    element is ``True`` so ``build_atlas`` can flag it. Author the rect against
+    a higher-resolution source sheet to avoid that.
 
     If ``key_rgb`` and ``fill_rgb`` are both given, native pixels within
     ``key_tol`` (per-channel sum) of ``key_rgb`` are repainted to ``fill_rgb``
@@ -201,11 +205,12 @@ def snap_tile(native_img, cell_w, cell_h, rect_src, grid, sample_frac=0.5,
         d = np.abs(crop.astype(int) - np.array(key_rgb)).sum(axis=2)
         crop[d <= key_tol] = fill_rgb
     tile = Image.fromarray(crop)
-    if w > grid or h > grid:
+    upscaled = w < grid or h < grid
+    if not upscaled:
         tile = sb.snap_to_native(tile, grid, grid, 0.0, 0.0, sample_frac)
     else:
         tile = tile.resize((grid, grid), Image.NEAREST)
-    return tile.convert("RGB"), (w, h)
+    return tile.convert("RGB"), (w, h, upscaled)
 
 
 # --------------------------------------------------------------------------
@@ -231,6 +236,7 @@ def build_atlas(spec):
     src_overrides = spec.get("sources", {})
     srcs = {}          # name -> (native_img_or_source, cell_w, cell_h)
     out_tiles = []
+    upscaled_cols = []
     report = [f"delivery '{spec['delivery']}'  biome={spec.get('biome')}  "
               f"stage={spec.get('stage')}  grid={grid}  background={bg}"
               + (f"  palette={pal_n}" if pal_n > 0 else "  palette=off")
@@ -253,13 +259,23 @@ def build_atlas(spec):
             else:
                 srcs[name] = (img.convert("RGB"), 1.0, 1.0)
         nat, cw, ch = srcs[name]
-        tile, (nw, nh) = snap_tile(nat, cw, ch, t["rect"], grid, sample_frac,
-                                   key_rgb, 60, fill_rgb)
+        tile, (nw, nh, up) = snap_tile(nat, cw, ch, t["rect"], grid, sample_frac,
+                                       key_rgb, 60, fill_rgb)
         out_tiles.append((t, tile))
         x, y, w, h = t["rect"]
+        flag = "  !! UPSCALED (source under target res)" if up else ""
+        if up:
+            upscaled_cols.append(f"{t['col']}:{t['name']} ({nw}x{nh})")
         report.append(f"  col {t['col']}  {t['name']:<11s} <- {name} "
                       f"[{x},{y} {w}x{h}px = {nw}x{nh} art-px] -> {grid}x{grid}  "
-                      f"collision={t.get('collision', 'full')}")
+                      f"collision={t.get('collision', 'full')}{flag}")
+
+    if upscaled_cols:
+        report.append(f"  WARNING: {len(upscaled_cols)} column(s) NEAREST-blown-up "
+                      f"from a lower-res source: {', '.join(upscaled_cols)}. "
+                      f"The art there is < {grid}px native -- point the rect at a "
+                      f"higher-resolution sheet (e.g. terrain_tiles.png) to keep "
+                      f"the atlas genuinely {grid}px crisp.")
 
     n = len(out_tiles)
 
@@ -419,15 +435,20 @@ def write_asset_catalog(spec, delivery_dir):
             if not os.path.isfile(src_file):
                 continue
             shutil.copy2(src_file, os.path.join(dst_dir, fn))
-            tiles.append({
+            entry = {
                 "id": t["id"],
                 "file": f"catalog/{stem}/{fn}",
                 "section": t.get("section"),
+                "role": t.get("role"),
                 "art_size": t.get("art_size"),
                 "src_rect": t.get("src_rect"),
                 "colors": t.get("colors"),
                 "shaped": bool(t.get("shaped", False)),
-            })
+            }
+            for k in ("cells_wh", "content_size", "native_size"):
+                if t.get(k) is not None:
+                    entry[k] = t[k]
+            tiles.append(entry)
         montage_rel = None
         m = os.path.join(cat_src, stem, "_montage.png")
         if os.path.isfile(m):
@@ -438,6 +459,7 @@ def write_asset_catalog(spec, delivery_dir):
             "source": src_png,
             "role_hint": _role_hint(src_png, spec),
             "art_pixel_src_px": idx.get("art_pixel_src_px"),
+            "size_table": bool(idx.get("size_table", False)),
             "count": len(tiles),
             "montage": montage_rel,
             "tiles": tiles,
@@ -463,13 +485,19 @@ def write_asset_catalog(spec, delivery_dir):
             "read this file. To use a tile: copy its `file` (path relative to "
             "this folder) into assets/biomes/<biome>/<role-dir>/ or "
             "assets/stages/<id>/..., then add an entry to a manifest.json with "
-            "`role` = the sheet's `role_hint` (docs/asset_pipeline.md lists the "
-            "per-role fields). `art_size` is the tile's native pixel size -- on "
-            "import scale it to a whole multiple of `grid`. `shaped` true = the "
-            "PNG has transparency (a prop/decoration silhouette); false = a full "
-            "opaque cell fit for a tile_atlas column. `src_rect` is the region "
-            "in the original source sheet. These PNGs are grid-snapped but NOT "
-            "palette-flattened -- quantise on import if a flat look is wanted."
+            "`role` = the tile's `role` (docs/asset_pipeline.md lists the "
+            "per-role fields). Sheets with `size_table: true` are already "
+            "delivered to the game size contract: `art_size` IS the final canvas "
+            "(one of 32/64/96/128/160/192 px per side, i.e. `cells_wh` whole "
+            "32px cells), binary alpha (no anti-aliasing), opaque interior, art "
+            "bottom-aligned and horizontally centred so the bottom edge is the "
+            "ground-contact line -- drop it in as-is, no rescale. `content_size` "
+            "is how much of that canvas the art covers; `native_size` is the "
+            "pre-fit crop. `shaped` true = a cut-out silhouette (prop / "
+            "decoration); false = a full cell that fills its square (terrain / "
+            "slope / platform). `src_rect` is the region in the original source "
+            "sheet. RGB is palette-capped by size tier; re-quantise on import "
+            "only if you want fewer colours."
         ),
         "sheets": sheets,
     }
@@ -551,29 +579,33 @@ def write_delivery_readme(spec, delivery_dir, manifest, catalog_doc=None):
     w("## 2. Pull in extra tiles from `catalog.json` (manual, only if needed)")
     w("")
     w("`catalog.json` groups every other segmented tile by its source sheet. "
-      "Each sheet carries a `role_hint`; each tile looks like:")
+      "Each sheet carries a `role_hint` and a `size_table` flag; each tile "
+      "looks like:")
     w("")
     w("```json")
-    w('{ "id": 12, "file": "catalog/terrain_tiles/012.png",')
-    w('  "art_size": [24, 24], "src_rect": [720, 96, 66, 64],')
-    w('  "colors": 87, "shaped": false, "section": null }')
+    w('{ "id": 12, "file": "catalog/terrain_tiles/012.png", "role": "tile_atlas",')
+    w('  "art_size": [32, 32], "cells_wh": [1, 1], "content_size": [32, 30],')
+    w('  "native_size": [39, 38], "src_rect": [29, 40, 103, 100],')
+    w('  "colors": 24, "shaped": false, "section": null }')
     w("```")
     w("")
     w("Sheets in this delivery:")
     w("")
-    w("| source sheet | role_hint | tiles | typical destination |")
-    w("|---|---|---|---|")
+    w("| source sheet | role_hint | size_table | tiles | typical destination |")
+    w("|---|---|---|---|---|")
     for s in catalog_doc["sheets"]:
         dest = _ROLE_DEST.get(s["role_hint"], "assets/biomes/<biome>/...")
         dest = dest.replace("<biome>", biome)
-        w(f"| `{s['source']}` | `{s['role_hint']}` | {s['count']} | {dest} |")
+        st = "yes" if s.get("size_table") else "no"
+        w(f"| `{s['source']}` | `{s['role_hint']}` | {st} | {s['count']} | {dest} |")
     w("")
     w("Steps:")
     w("")
     w("1. Browse `catalog/<sheet>/_montage.png`, note the ids you want.")
     w("2. Copy each tile's `file` into the project at the destination for its "
-      "sheet's `role_hint` (table above).")
-    w("3. Add an entry to a `manifest.json` with `role` = that `role_hint` and "
+      "`role` (table above). `size_table: yes` sheets need NO rescale -- the "
+      "PNG is already a whole-cell canvas, binary alpha, bottom-aligned.")
+    w("3. Add an entry to a `manifest.json` with `role` = that tile's `role` and "
       "re-run ingest. `docs/asset_pipeline.md` lists the per-role fields "
       "(`name`, `pivot`, `frames`/`fps`/`frame_size`, `z_index`, `collision`, "
       "`scroll`, `tags`, ...).")
@@ -582,18 +614,26 @@ def write_delivery_readme(spec, delivery_dir, manifest, catalog_doc=None):
     w("")
     w("| field | meaning |")
     w("|---|---|")
-    w("| `file` | PNG path relative to this folder. Grid-snapped, transparent "
-      "background, **not** palette-flattened - quantise on import for a flat look. |")
-    w("| `art_size` | `[w, h]` native pixel size. Scale to a whole multiple of "
-      f"`grid` ({grid}) on import. |")
+    w("| `file` | PNG path relative to this folder. |")
+    w("| `role` | `tile_atlas` (fills a grid cell) / `decoration` / `prop` / "
+      "`water` / `parallax` - a guess from the sheet name; override when wiring. |")
+    w("| `art_size` | `[w, h]` of the delivered PNG. On a `size_table` sheet "
+      f"this is a whole-cell canvas ({' / '.join(map(str, (32, 64, 96, 128, 160, 192)))} "
+      "px/side); drop in as-is. Otherwise it is the native crop size - scale to "
+      f"a multiple of `grid` ({grid}) on import. |")
+    w("| `cells_wh` | `art_size` in whole 32px cells (`size_table` sheets only). |")
+    w("| `content_size` | `[w, h]` the art actually covers inside the canvas "
+      "(rest is transparent bottom-aligned padding). |")
+    w("| `native_size` | `[w, h]` of the pre-fit crop, before size-table snap. |")
     w("| `src_rect` | `[x, y, w, h]` region in the original source sheet. |")
-    w("| `shaped` | `true` = a cutout silhouette (prop / decoration); `false` = "
-      "a full opaque cell fit for a `tile_atlas` column. |")
+    w("| `shaped` | `true` = a cut-out silhouette (prop / decoration); `false` = "
+      "a full cell that fills its square (terrain / slope / platform). |")
     w("| `section` | source-sheet section label if one was marked, else `null`. |")
-    w("| `colors` | distinct colours in the extracted PNG. |")
+    w("| `colors` | distinct colours in the delivered PNG. |")
     w("")
-    w("`role_hint` is a guess (from the sheet filename, or `segment.role_hints` "
-      "in the spec) - override it freely when you wire the asset in.")
+    w("`role` / `role_hint` are guesses (from the sheet filename, or "
+      "`segment.role_hints` in the spec) - override freely when you wire the "
+      "asset in.")
     _write(delivery_dir, L)
     return os.path.join(delivery_dir, "README.md")
 

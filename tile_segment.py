@@ -272,6 +272,118 @@ def _section_of(src_rect, sections):
 
 
 # --------------------------------------------------------------------------
+# game asset size-table contract
+# --------------------------------------------------------------------------
+# The game authors every scenery / terrain asset on a fixed canvas whose sides
+# are whole 32px cells: 32, 64, 96, 128, 160, 192 px (1..6 cells). A delivered
+# PNG must BE one of those sizes, binary alpha (no anti-aliasing), opaque
+# interior, art bottom-aligned & horizontally centred so its bottom edge is the
+# ground-contact line.  See the crispness rules in the delivery README.
+CANON_PX = (32, 64, 96, 128, 160, 192)
+
+
+def _canon_px(v, cap=192):
+    """Smallest table size that still contains ``v`` px (silhouette padding)."""
+    for c in CANON_PX:
+        if v <= c:
+            return c
+    return cap
+
+
+def _canon_round(v):
+    """Nearest table size to ``v`` px, ties to the smaller (cell-fill)."""
+    return min(CANON_PX, key=lambda c: (abs(c - v), c))
+
+
+def _fill_holes(mask):
+    """``mask`` bool HxW -> same mask with fully-enclosed transparent holes
+    (a gap the outside can't reach) turned solid, so a silhouette has no
+    see-through speckle in its interior."""
+    import cv2
+    inv = (~mask).astype(np.uint8)
+    h, w = inv.shape
+    pad = np.zeros((h + 2, w + 2), np.uint8)
+    pad[1:-1, 1:-1] = inv
+    pad[0, :] = pad[-1, :] = pad[:, 0] = pad[:, -1] = 1   # whole border is outside
+    cv2.floodFill(pad, np.zeros((h + 4, w + 4), np.uint8), (0, 0), 0)
+    return mask | pad[1:-1, 1:-1].astype(bool)
+
+
+def _palette_tier(canvas_px):
+    """Colour cap by asset size: <=32 small, <=128 medium, else large tree."""
+    m = max(canvas_px)
+    return 32 if m <= 32 else 64 if m <= 128 else 96
+
+
+def fit_table(tile, *, shaped=True, alpha_bin=128, palette="auto", chroma=None):
+    """Snap one extracted tile to the game's asset size table.
+
+    - alpha thresholded hard to 0 / 255 at ``alpha_bin`` (kills the AA ramp),
+    - enclosed holes filled (opaque interior),
+    - a ``shaped`` silhouette (tree, rock, bush, decoration) is dropped onto
+      the smallest ``CANON_PX`` canvas that holds it, bottom-aligned and
+      horizontally centred (bottom edge = ground-contact); a full rectangular
+      cell (terrain, slope, platform) is instead crisp-resampled to fill the
+      nearest table cell exactly, so a tileset stays gap-free,
+    - RGB flat-quantised (``palette`` int, or ``"auto"`` = tier by size), and
+      optionally composited onto a ``chroma`` (r,g,b) key instead of staying
+      transparent.
+
+    Returns ``(PIL image, (W, H) canvas px, (cw, ch) content px)`` or ``None``
+    when the tile has no opaque pixels.
+    """
+    arr = np.asarray(tile.convert("RGBA")).copy()
+    mask = arr[..., 3] >= alpha_bin
+    if int(mask.sum()) < 4:
+        return None
+
+    # Repaint every not-originally-opaque pixel from its opaque neighbours, so
+    # neither the interior hole-fill nor the cell-resample below can bring the
+    # key colour (magenta / green) back from the RGB that hid under the alpha.
+    if not mask.all():
+        import cv2
+        bgr = np.ascontiguousarray(arr[..., 2::-1])
+        arr[..., :3] = cv2.inpaint(bgr, (~mask).astype(np.uint8), 3,
+                                   cv2.INPAINT_TELEA)[..., ::-1]
+
+    filled = mask if mask.all() else _fill_holes(mask)
+    ys, xs = np.where(filled)
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    cw, ch = x1 - x0, y1 - y0
+    content = arr[y0:y1, x0:x1, :3]
+    cmask = filled[y0:y1, x0:x1]
+
+    if not shaped:
+        # terrain / slope / platform: fill the nearest cell, no padding.
+        W, H = _canon_round(cw), _canon_round(ch)
+        rgb = sb.snap_to_native(Image.fromarray(content), W, H, 0.0, 0.0, 0.5) \
+            if (cw >= W and ch >= H) else \
+            Image.fromarray(content).resize((W, H), Image.NEAREST)
+        canvas = np.zeros((H, W, 4), np.uint8)
+        canvas[..., :3] = np.asarray(rgb.convert("RGB"))
+        canvas[..., 3] = 255
+    else:
+        W, H = _canon_px(cw), _canon_px(ch)
+        canvas = np.zeros((H, W, 4), np.uint8)
+        ox, oy = (W - cw) // 2, H - ch             # centred, bottom-aligned
+        canvas[oy:oy + ch, ox:ox + cw, :3] = np.where(cmask[..., None], content, 0)
+        canvas[oy:oy + ch, ox:ox + cw, 3] = cmask.astype(np.uint8) * 255
+
+    pal = _palette_tier((W, H)) if palette == "auto" else int(palette or 0)
+    if pal:
+        rgb = np.asarray(sb.snap_palette(Image.fromarray(canvas[..., :3]), pal))
+        canvas[..., :3] = rgb
+        canvas[canvas[..., 3] == 0, :3] = 0
+
+    if chroma is not None:
+        key = np.array(chroma, np.uint8)
+        flat = np.where(canvas[..., 3:4] > 0, canvas[..., :3], key).astype(np.uint8)
+        return Image.fromarray(flat, "RGB"), (W, H), (cw, ch)
+    return Image.fromarray(canvas, "RGBA"), (W, H), (cw, ch)
+
+
+# --------------------------------------------------------------------------
 # rendering + catalogue
 # --------------------------------------------------------------------------
 def _native(img, override=None, sample_frac=0.5):
@@ -287,7 +399,8 @@ def _native(img, override=None, sample_frac=0.5):
 
 
 def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
-                  native_override=None, sample_frac=0.5, upscale=6, **seg_kw):
+                  native_override=None, sample_frac=0.5, upscale=6, grid=32,
+                  role=None, **seg_kw):
     """Segment ``img`` and write ``out_dir``:
         NNN.png            native-resolution crisp tile (RGBA, cut to its mask)
         _contact_sheet.png numbered boxes on the source
@@ -309,6 +422,11 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
     peel = int(seg_kw.pop("magenta_peel", 2))
     mag_kill = bool(seg_kw.pop("magenta_kill", False))
     tile_art = int(seg_kw.pop("tile_art", 16))
+    size_table = bool(seg_kw.pop("size_table", False))
+    alpha_bin = int(seg_kw.pop("alpha_bin", 128))
+    chroma = seg_kw.pop("chroma", None)
+    if isinstance(chroma, str):
+        chroma = sb.parse_key_color(chroma)
     os.makedirs(out_dir, exist_ok=True)
 
     native, cw, ch = _native(img, native_override, sample_frac)
@@ -371,6 +489,7 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
     native_cut = Image.fromarray(native_cut, "RGBA")
 
     index = []
+    montage_tiles = []                     # (id, PIL image actually delivered)
     for c in comps:
         x, y, w, h = c["src_rect"]
         ax, ay = round(x / cw), round(y / ch)
@@ -378,10 +497,8 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
         ax, ay = min(ax, native.width - 1), min(ay, native.height - 1)
         aw, ah = min(aw, native.width - ax), min(ah, native.height - ay)
         tile = native_cut.crop((ax, ay, ax + aw, ay + ah))
-        tile.save(os.path.join(out_dir, f"{c['id']:03d}.png"))
         arr = np.asarray(tile)
         alpha = arr[..., 3] > 0
-        vis = arr[alpha][:, :3]
         # "full rectangular tile" = opaque pixels reach all four edges (a
         # terrain cell); a prop/decoration silhouette (stalactite, cloud,
         # crystal) only touches one edge or floats. Measured 1px in so the
@@ -389,24 +506,71 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
         k = 1 if min(alpha.shape) > 4 else 0
         edges = (alpha[k].mean(), alpha[-1 - k].mean(),
                  alpha[:, k].mean(), alpha[:, -1 - k].mean())
-        index.append({
+        shaped = bool(min(edges) < 0.4)
+
+        # Fill-vs-pad is driven by the sheet's role when the spec gives one
+        # (a `terrain_tiles.png` cell fills its grid square even if its grassy
+        # top is ragged; a `*_decorations.png` silhouette is padded and
+        # bottom-aligned), and falls back to the edge-coverage guess otherwise.
+        if role == "tile_atlas":
+            # a solid cell fills its bbox -> resample to fill the grid square;
+            # a ragged slope / corner / thin column keeps its shape (padded).
+            sh, tile_role = c["fill"] < 0.62, "tile_atlas"
+        elif role:
+            sh, tile_role = True, role
+        else:
+            sh, tile_role = shaped, ("prop" if shaped else "tile_atlas")
+
+        entry = {
             "id": c["id"],
             "section": _section_of(c["src_rect"], sections),
             "src_rect": [int(v) for v in c["src_rect"]],
             "art_rect": [int(ax), int(ay), int(aw), int(ah)],
-            "art_size": [int(aw), int(ah)],
-            "colors": int(len(np.unique(vis, axis=0))) if len(vis) else 0,
             "fill": c["fill"],
-            "opaque_frac": round(float(alpha.mean()), 3),
-            "shaped": bool(min(edges) < 0.4),
-        })
+            "shaped": shaped,
+        }
+
+        fitted = (fit_table(tile, shaped=sh, alpha_bin=alpha_bin, chroma=chroma)
+                  if size_table else None)
+        if fitted is not None:
+            out_img, (W, Hh), (ctw, cth) = fitted
+            vis = np.asarray(out_img.convert("RGB")).reshape(-1, 3)
+            if out_img.mode == "RGBA":
+                vis = vis[np.asarray(out_img)[..., 3].reshape(-1) > 0]
+            entry.update({
+                "art_size": [int(W), int(Hh)],
+                "cells_wh": [W // grid, Hh // grid],
+                "content_size": [int(ctw), int(cth)],
+                "native_size": [int(aw), int(ah)],
+                "colors": int(len(np.unique(vis, axis=0))) if len(vis) else 0,
+                "role": tile_role,
+                "shaped": bool(sh),          # what the fit actually did
+            })
+            deliver = out_img
+        else:
+            vis = arr[alpha][:, :3]
+            entry.update({
+                "art_size": [int(aw), int(ah)],
+                "colors": int(len(np.unique(vis, axis=0))) if len(vis) else 0,
+                "opaque_frac": round(float(alpha.mean()), 3),
+                "role": tile_role,
+            })
+            deliver = tile
+
+        deliver.save(os.path.join(out_dir, f"{c['id']:03d}.png"))
+        montage_tiles.append((c["id"], deliver))
+        index.append(entry)
 
     _contact_sheet(img, comps, os.path.join(out_dir, "_contact_sheet.png"))
-    _montage(native_cut, cw, ch, comps, os.path.join(out_dir, "_montage.png"),
-             upscale)
+    if size_table:
+        _montage_fitted(montage_tiles, os.path.join(out_dir, "_montage.png"))
+    else:
+        _montage(native_cut, cw, ch, comps,
+                 os.path.join(out_dir, "_montage.png"), upscale)
     with open(os.path.join(out_dir, "index.json"), "w", encoding="utf-8") as f:
         json.dump({"sheet": sheet_name, "mask": tag, "count": len(index),
                    "art_pixel_src_px": [round(cw, 4), round(ch, 4)],
+                   "size_table": size_table, "grid": grid,
                    "tiles": index}, f, indent=2)
         f.write("\n")
     return index, tag
@@ -420,6 +584,39 @@ def _contact_sheet(img, comps, path):
         d.rectangle([x, y, x + w, y + h], outline=(255, 0, 0))
         d.text((x + 1, y + 1), str(c["id"]), fill=(255, 255, 0))
     disp.save(path)
+
+
+def _montage_fitted(tiles, path, cols=12, cell=200):
+    """Montage of the size-table-fitted deliverables: each shown at its true
+    canvas size (NEAREST-scaled up to fill the cell, aspect kept), id + px
+    dimensions labelled, on a checker so transparent padding reads as padding."""
+    if not tiles:
+        Image.new("RGB", (cell, cell), (18, 18, 20)).save(path)
+        return
+    lab = 14
+    rows = (len(tiles) + cols - 1) // cols or 1
+    m = Image.new("RGB", (cols * cell, rows * cell), (18, 18, 20))
+    d = ImageDraw.Draw(m)
+    inner = cell - lab - 6
+    for i, (tid, t) in enumerate(tiles):
+        t = t.convert("RGBA")
+        f = max(1, int(min(inner / t.width, inner / t.height)))
+        big = t.resize((t.width * f, t.height * f), Image.NEAREST)
+        if big.width > inner or big.height > inner:
+            big.thumbnail((inner, inner), Image.NEAREST)
+        gx, gy = (i % cols) * cell, (i // cols) * cell
+        # checker so transparent canvas padding is visible
+        for yy in range(gy + lab, gy + cell, 8):
+            for xx in range(gx, gx + cell, 8):
+                if ((xx // 8) + (yy // 8)) % 2:
+                    d.rectangle([xx, yy, xx + 7, yy + 7], fill=(32, 32, 38))
+        d.rectangle([gx, gy, gx + cell - 1, gy + cell - 1], outline=(40, 40, 46))
+        pos = (gx + (cell - big.width) // 2,
+               gy + lab + (inner - big.height) // 2)
+        m.paste(big, pos, big)
+        d.text((gx + 2, gy + 2),
+               f"{tid}  {t.width}x{t.height}", fill=(120, 255, 120))
+    m.save(path)
 
 
 def _montage(native, cw, ch, comps, path, upscale, cols=12):
