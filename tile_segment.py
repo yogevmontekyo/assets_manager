@@ -282,6 +282,48 @@ def _section_of(src_rect, sections):
 CANON_PX = (32, 64, 96, 128, 160, 192)
 
 
+def _nearest_fill(rgb, mask):
+    """Replace pixels where ``mask`` is True with the colour of the nearest
+    False pixel -- a flat "Voronoi" fill. Used instead of a gradient-
+    propagating inpaint (``cv2.INPAINT_TELEA``/``NS``) because those follow
+    edges/highlights INTO the hole and, on a large corner of key colour next
+    to a bright rim pixel, draw a streaking light-ray artefact across it."""
+    from scipy.ndimage import distance_transform_edt
+    if not mask.any() or mask.all():
+        return rgb
+    _, (iy, ix) = distance_transform_edt(mask, return_indices=True)
+    return rgb[iy, ix]
+
+
+def _keep_main_blob(rgba, min_frac=0.18, bridge=2):
+    """Zero the alpha of opaque blobs in a tile crop that are BOTH small
+    (< ``min_frac`` of the largest blob's area) AND farther than ``bridge`` px
+    from it -- a sliver of a neighbouring sheet element that happened to fall
+    inside this tile's rectangular crop (e.g. the hanging foliage of the row
+    above dipping into the top of a cliff tile). A blob that is sizable, or
+    touches / nearly touches the main mass, is kept (a real detached boulder at
+    a formation's foot, a split rock column)."""
+    import cv2
+    a = (rgba[..., 3] > 0).astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(a, 8)
+    if n <= 2:
+        return rgba
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    main = 1 + int(np.argmax(areas))
+    big = int(areas.max())
+    keep = (lab == main)
+    r = 2 * bridge + 1
+    near = cv2.dilate(keep.astype(np.uint8), np.ones((r, r), np.uint8)) > 0
+    for i in range(1, n):
+        if i == main:
+            continue
+        if stats[i, cv2.CC_STAT_AREA] >= min_frac * big or (near & (lab == i)).any():
+            keep |= (lab == i)
+    out = rgba.copy()
+    out[~keep, 3] = 0
+    return out
+
+
 def _canon_px(v, cap=192):
     """Smallest table size that still contains ``v`` px (silhouette padding)."""
     for c in CANON_PX:
@@ -295,10 +337,15 @@ def _canon_round(v):
     return min(CANON_PX, key=lambda c: (abs(c - v), c))
 
 
-def _fill_holes(mask):
-    """``mask`` bool HxW -> same mask with fully-enclosed transparent holes
-    (a gap the outside can't reach) turned solid, so a silhouette has no
-    see-through speckle in its interior."""
+def _fill_holes(mask, max_hole_frac=0.12):
+    """``mask`` bool HxW -> same mask with SMALL fully-enclosed transparent
+    holes (a gap the outside can't reach, e.g. a fleck of key colour between
+    leaves) turned solid, so a silhouette has no see-through speckle in its
+    interior. A hole bigger than ``max_hole_frac`` of the shape's own opaque
+    area is left alone -- that is deliberate negative space (a ring, an arch,
+    the gap of an "L"), not a rendering artefact, and filling it would either
+    show a flat colour where none was drawn or (nearest-fill) a radial-spoke
+    smear with no basis in the source art."""
     import cv2
     inv = (~mask).astype(np.uint8)
     h, w = inv.shape
@@ -306,7 +353,16 @@ def _fill_holes(mask):
     pad[1:-1, 1:-1] = inv
     pad[0, :] = pad[-1, :] = pad[:, 0] = pad[:, -1] = 1   # whole border is outside
     cv2.floodFill(pad, np.zeros((h + 4, w + 4), np.uint8), (0, 0), 0)
-    return mask | pad[1:-1, 1:-1].astype(bool)
+    holes = pad[1:-1, 1:-1].astype(bool)
+    if not holes.any():
+        return mask
+    thresh = max(4, max_hole_frac * mask.sum())
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(holes.astype(np.uint8), 8)
+    keep = np.zeros_like(holes)
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] <= thresh:
+            keep |= lab == i
+    return mask | keep
 
 
 def _palette_tier(canvas_px):
@@ -341,10 +397,7 @@ def fit_table(tile, *, shaped=True, alpha_bin=128, palette="auto", chroma=None):
     # neither the interior hole-fill nor the cell-resample below can bring the
     # key colour (magenta / green) back from the RGB that hid under the alpha.
     if not mask.all():
-        import cv2
-        bgr = np.ascontiguousarray(arr[..., 2::-1])
-        arr[..., :3] = cv2.inpaint(bgr, (~mask).astype(np.uint8), 3,
-                                   cv2.INPAINT_TELEA)[..., ::-1]
+        arr[..., :3] = _nearest_fill(arr[..., :3], ~mask)
 
     filled = mask if mask.all() else _fill_holes(mask)
     ys, xs = np.where(filled)
@@ -364,6 +417,17 @@ def fit_table(tile, *, shaped=True, alpha_bin=128, palette="auto", chroma=None):
         canvas[..., :3] = np.asarray(rgb.convert("RGB"))
         canvas[..., 3] = 255
     else:
+        # a silhouette larger than the biggest canonical canvas is first
+        # downscaled (aspect kept, NEAREST) to fit the 192px ceiling, then padded.
+        cap = CANON_PX[-1]
+        if cw > cap or ch > cap:
+            s = cap / max(cw, ch)
+            nw, nh = max(1, round(cw * s)), max(1, round(ch * s))
+            content = np.asarray(
+                Image.fromarray(content).resize((nw, nh), Image.NEAREST))
+            cmask = np.asarray(Image.fromarray(
+                (cmask.astype(np.uint8) * 255)).resize((nw, nh), Image.NEAREST)) > 127
+            cw, ch = nw, nh
         W, H = _canon_px(cw), _canon_px(ch)
         canvas = np.zeros((H, W, 4), np.uint8)
         ox, oy = (W - cw) // 2, H - ch             # centred, bottom-aligned
@@ -427,7 +491,40 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
     chroma = seg_kw.pop("chroma", None)
     if isinstance(chroma, str):
         chroma = sb.parse_key_color(chroma)
+    # `extra_large`: this sheet's art carries much more source detail than its
+    # dominant art-pixel grid implies (a hi-res "megasheet" of big set-pieces).
+    # Pull tiles from a native grid `mult`x finer so a cliff / tree that the
+    # normal grid would flatten to a 64-96px silhouette is delivered at its
+    # real 128-192px size -- a genuine downscale from source, still crisp, not
+    # a NEAREST blow-up. True -> 2.5x; a number sets the multiplier explicitly.
+    xl = seg_kw.pop("extra_large", False)
+    # `key_rim_peel`: erode key-hue (magenta / pink) pixels that chain back to
+    # the transparent background -- a 1px chroma keyline baked into the RGB when
+    # the art was cut from a magenta matte. The alpha channel is already clean,
+    # so `magenta_peel` (which only runs on non-alpha sheets) never sees it; at
+    # `extra_large` sizes that hairline survives the downscale as a coloured rim.
+    # Interior pink flowers don't touch the background, so they're kept.
+    key_rim_peel = int(seg_kw.pop("key_rim_peel", 0))
+    # `shadow_detint` (0..1): desaturate dark violet AO/shadow pixels toward
+    # neutral grey -- companion to `extra_large` for art that paints stone
+    # shadow in purple (see below).
+    shadow_detint = float(seg_kw.pop("shadow_detint", 0.0))
+    # `trim_stragglers`: after cropping each tile from the sheet, drop small
+    # disconnected blobs that belong to a neighbouring element which overlapped
+    # the rectangular crop (see `_keep_main_blob`). On by default; harmless on a
+    # sheet of well-spaced props (each crop is a single blob -> no-op).
+    trim_stragglers = bool(seg_kw.pop("trim_stragglers", True))
     os.makedirs(out_dir, exist_ok=True)
+
+    if xl:
+        mult = 2.5 if xl is True else float(xl)
+        ov = dict(native_override or {})
+        if not ov.get("native_grid"):
+            gx, gy, _cwd, _chd, dpx, dpy, _s = sb.detect_native_grid(
+                img.convert("RGB"))
+            ov["native_grid"] = [max(1, round(gx * mult)), max(1, round(gy * mult))]
+            ov.setdefault("phase", [float(dpx), float(dpy)])
+        native_override = ov
 
     native, cw, ch = _native(img, native_override, sample_frac)
     seg_kw.setdefault("tile_px", (tile_art * cw, tile_art * ch))
@@ -486,6 +583,46 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
                 cut &= ~fam
     native_cut = np.dstack([np.asarray(native.convert("RGB")),
                             cut.astype(np.uint8) * 255])
+
+    # Kill "opaque black": pixels the alpha snap keeps but whose RGB snapped to
+    # ~pure black -- the ragged sparse tips of a grass/flower crown where the
+    # separate alpha- and colour-snaps disagree. No cliff art is truly black,
+    # so this only trims that fringe; real dark crevice rock is ~(20,20,25).
+    ob = native_cut[..., :3].astype(np.uint16).sum(axis=2) < 16
+    native_cut[..., 3][ob] = 0
+
+    if key_rim_peel > 0:
+        rgb = native_cut[..., :3].astype(int)
+        op = native_cut[..., 3] > 0
+        # magenta / pink family: R and B both lead G clearly
+        fam = (op & (rgb[..., 1] < rgb[..., 0] - 25)
+                  & (rgb[..., 1] < rgb[..., 2] - 25)
+                  & (rgb[..., 0] > 110) & (rgb[..., 2] > 110))
+        bg = ~op
+        cross = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], np.uint8)
+        for _ in range(key_rim_peel):
+            adj = cv2.dilate(bg.astype(np.uint8), cross) > 0
+            bg |= adj & fam
+        native_cut[..., 3][bg] = 0
+
+    if shadow_detint > 0:
+        # This art paints deep rock shadow / ambient-occlusion in dark violet
+        # (R and B lead G, low luma). The dominant-grid downscale medians it
+        # away; at `extra_large` density it survives as purple grooves and a
+        # tinted silhouette rim. Pull those pixels toward neutral grey of the
+        # same luma by `shadow_detint` (0..1). Green foliage, lit stone and
+        # bright flowers are untouched (they fail the hue or luma test).
+        a = native_cut[..., :3].astype(np.int16)
+        r_, g_, b_ = a[..., 0], a[..., 1], a[..., 2]
+        luma = (r_ * 30 + g_ * 59 + b_ * 11) // 100
+        violet = ((native_cut[..., 3] > 0) & (r_ > g_ + 10)
+                  & (b_ > g_ + 6) & (luma < 125))
+        grey = np.repeat(luma[..., None], 3, axis=2)
+        mixed = (a * (1.0 - shadow_detint) + grey * shadow_detint)
+        native_cut[..., :3] = np.where(violet[..., None],
+                                       mixed.round().clip(0, 255).astype(np.uint8),
+                                       native_cut[..., :3])
+
     native_cut = Image.fromarray(native_cut, "RGBA")
 
     index = []
@@ -497,6 +634,8 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
         ax, ay = min(ax, native.width - 1), min(ay, native.height - 1)
         aw, ah = min(aw, native.width - ax), min(ah, native.height - ay)
         tile = native_cut.crop((ax, ay, ax + aw, ay + ah))
+        if trim_stragglers:
+            tile = Image.fromarray(_keep_main_blob(np.asarray(tile)), "RGBA")
         arr = np.asarray(tile)
         alpha = arr[..., 3] > 0
         # "full rectangular tile" = opaque pixels reach all four edges (a
@@ -515,7 +654,7 @@ def write_catalog(img, out_dir, *, sheet_name="sheet", sections=None,
         if role == "tile_atlas":
             # a solid cell fills its bbox -> resample to fill the grid square;
             # a ragged slope / corner / thin column keeps its shape (padded).
-            sh, tile_role = c["fill"] < 0.62, "tile_atlas"
+            sh, tile_role = c["fill"] < 0.80, "tile_atlas"
         elif role:
             sh, tile_role = True, role
         else:

@@ -1,0 +1,63 @@
+{
+  "delivery": "alpine-forest-tiles-01",
+  "biome": "foothill_forest",
+  "stage": null,
+  "grid": 32,
+  "background": "opaque",
+  "source_key": "magenta",
+  "sample_frac": 0.5,
+  "palette_colors": 24,
+  "segment": {
+    "sources": [
+      "terrain_tiles.png",
+      "decorations.png",
+      "tree_decorations.png",
+      "rock_eng_decor.png",
+      "rock_nat_decor.png",
+      "nature_decor.png",
+      "village_decorations.png",
+      "water_decorations.png",
+      "waterfall_tiles.png",
+      "background_mountains.png",
+      "background_clouds.png"
+    ],
+    "min_area": 150,
+    "key_tol": 60,
+    "key_margin": 32,
+    "magenta_peel": 2,
+    "pad": 1,
+    "close_px": 0,
+    "size_table": true,
+    "alpha_bin": 128,
+    "per_source": {
+      "terrain_tiles.png": { "magenta_kill": true },
+      "tree_decorations.png": { "magenta_kill": true },
+      "rock_eng_decor.png": { "magenta_kill": true },
+      "rock_nat_decor.png": { "magenta_kill": true },
+      "village_decorations.png": { "magenta_kill": true },
+      "water_decorations.png": { "magenta_kill": true },
+      "decorations.png": { "magenta_peel": 2 },
+      "nature_decor.png": { "magenta_peel": 2 },
+      "waterfall_tiles.png": { "magenta_kill": true },
+      "background_clouds.png": { "magenta_kill": true },
+      "background_mountains.png": { "magenta_peel": 1, "size_table": false }
+    }
+  },
+  "tiles": [
+    { "col": 0,  "name": "ground_sub", "collision": "full", "src": "terrain_tiles.png", "rect": [1066, 872, 88, 100] },
+    { "col": 1,  "name": "ground_top", "collision": "full", "src": "terrain_tiles.png", "rect": [29, 40, 103, 100] },
+    { "col": 2,  "name": "platform",   "collision": "top",  "src": "terrain_tiles.png", "rect": [315, 30, 111, 92] },
+    { "col": 3,  "name": "block",      "collision": "full", "src": "terrain_tiles.png", "rect": [173, 40, 98, 100] },
+
+    { "col": 4,  "name": "terrain_1",  "collision": "full", "src": "terrain_tiles.png", "rect": [166, 24, 112, 126] },
+    { "col": 5,  "name": "terrain_2",  "collision": "full", "src": "terrain_tiles.png", "rect": [310, 24, 121, 128] },
+    { "col": 6,  "name": "terrain_3",  "collision": "full", "src": "terrain_tiles.png", "rect": [464, 23, 115, 128] },
+    { "col": 7,  "name": "terrain_4",  "collision": "full", "src": "terrain_tiles.png", "rect": [625, 24, 118, 130] },
+    { "col": 8,  "name": "terrain_15", "collision": "full", "src": "terrain_tiles.png", "rect": [811, 187, 126, 98] },
+    { "col": 9,  "name": "terrain_16", "collision": "full", "src": "terrain_tiles.png", "rect": [970, 185, 108, 102] },
+    { "col": 10, "name": "terrain_17", "collision": "full", "src": "terrain_tiles.png", "rect": [1119, 186, 82, 101] },
+    { "col": 11, "name": "terrain_18", "collision": "full", "src": "terrain_tiles.png", "rect": [1248, 184, 109, 99] },
+    { "col": 12, "name": "terrain_19", "collision": "full", "src": "terrain_tiles.png", "rect": [1428, 169, 79, 113] },
+    { "col": 13, "name": "terrain_22", "collision": "full", "src": "terrain_tiles.png", "rect": [343, 304, 118, 128] }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "delivery": "cliff-tiles-01",
+  "biome": "cliffs",
+  "stage": null,
+  "grid": 32,
+  "background": "opaque",
+  "source_key": null,
+  "sample_frac": 0.5,
+  "palette_colors": 32,
+  "segment": {
+    "sources": [
+      "Clifs_RocksT.png",
+      "Clifs_TreesT.png",
+      "Clif_Plants_Platforms_T.png",
+      "Clif_platform1.png",
+      "Clif_platform2.png"
+    ],
+    "min_area": 220,
+    "pad": 1,
+    "close_px": 0,
+    "size_table": true,
+    "alpha_bin": 128,
+    "role_hints": {
+      "Clifs_RocksT.png": "decoration",
+      "Clifs_TreesT.png": "decoration",
+      "Clif_Plants_Platforms_T.png": "decoration",
+      "Clif_platform1.png": "prop",
+      "Clif_platform2.png": "prop"
+    },
+    "per_source": {
+      "Clifs_RocksT.png": { "max_w_frac": 0.55, "max_h_frac": 0.80, "min_area": 400, "extra_large": 2.5, "key_rim_peel": 1, "shadow_detint": 0.9 },
+      "Clifs_TreesT.png": { "max_w_frac": 0.60, "max_h_frac": 0.98, "min_area": 600 },
+      "Clif_Plants_Platforms_T.png": { "max_w_frac": 0.40, "max_h_frac": 0.55 },
+      "Clif_platform1.png": { "max_w_frac": 0.72, "max_h_frac": 0.60 },
+      "Clif_platform2.png": { "max_w_frac": 0.72, "max_h_frac": 0.60 }
+    }
+  },
+  "tiles": [
+    { "col": 0, "name": "ground_sub", "collision": "full", "src": "Clifs_RocksT.png", "rect": [368, 560, 96, 96] },
+    { "col": 1, "name": "ground_top", "collision": "full", "src": "Clifs_RocksT.png", "rect": [456, 776, 96, 96] },
+    { "col": 2, "name": "platform",   "collision": "top",  "src": "Clifs_RocksT.png", "rect": [112, 248, 96, 96] },
+    { "col": 3, "name": "block",      "collision": "full", "src": "Clifs_RocksT.png", "rect": [408, 88, 96, 96] }
+  ]
+}

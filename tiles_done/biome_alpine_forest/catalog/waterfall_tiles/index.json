@@ -1,0 +1,913 @@
+{
+  "sheet": "waterfall_tiles",
+  "mask": "border-colour (247, 6, 249)",
+  "count": 25,
+  "art_pixel_src_px": [
+    3.0,
+    3.0
+  ],
+  "size_table": true,
+  "grid": 32,
+  "tiles": [
+    {
+      "id": 0,
+      "section": null,
+      "src_rect": [
+        519,
+        94,
+        226,
+        223
+      ],
+      "art_rect": [
+        173,
+        31,
+        75,
+        74
+      ],
+      "fill": 0.802,
+      "shaped": true,
+      "art_size": [
+        96,
+        96
+      ],
+      "cells_wh": [
+        3,
+        3
+      ],
+      "content_size": [
+        74,
+        73
+      ],
+      "native_size": [
+        75,
+        74
+      ],
+      "colors": 64,
+      "role": "water"
+    },
+    {
+      "id": 1,
+      "section": null,
+      "src_rect": [
+        778,
+        97,
+        127,
+        215
+      ],
+      "art_rect": [
+        259,
+        32,
+        42,
+        72
+      ],
+      "fill": 0.785,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        41,
+        70
+      ],
+      "native_size": [
+        42,
+        72
+      ],
+      "colors": 62,
+      "role": "water"
+    },
+    {
+      "id": 2,
+      "section": null,
+      "src_rect": [
+        940,
+        101,
+        126,
+        211
+      ],
+      "art_rect": [
+        313,
+        34,
+        42,
+        70
+      ],
+      "fill": 0.721,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        41,
+        69
+      ],
+      "native_size": [
+        42,
+        70
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 3,
+      "section": null,
+      "src_rect": [
+        1100,
+        101,
+        123,
+        211
+      ],
+      "art_rect": [
+        367,
+        34,
+        41,
+        70
+      ],
+      "fill": 0.693,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        40,
+        69
+      ],
+      "native_size": [
+        41,
+        70
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 4,
+      "section": null,
+      "src_rect": [
+        543,
+        381,
+        131,
+        334
+      ],
+      "art_rect": [
+        181,
+        127,
+        44,
+        111
+      ],
+      "fill": 0.969,
+      "shaped": true,
+      "art_size": [
+        64,
+        128
+      ],
+      "cells_wh": [
+        2,
+        4
+      ],
+      "content_size": [
+        42,
+        111
+      ],
+      "native_size": [
+        44,
+        111
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 5,
+      "section": null,
+      "src_rect": [
+        728,
+        381,
+        123,
+        334
+      ],
+      "art_rect": [
+        243,
+        127,
+        41,
+        111
+      ],
+      "fill": 0.977,
+      "shaped": true,
+      "art_size": [
+        64,
+        128
+      ],
+      "cells_wh": [
+        2,
+        4
+      ],
+      "content_size": [
+        40,
+        111
+      ],
+      "native_size": [
+        41,
+        111
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 6,
+      "section": null,
+      "src_rect": [
+        910,
+        381,
+        95,
+        335
+      ],
+      "art_rect": [
+        303,
+        127,
+        32,
+        112
+      ],
+      "fill": 0.982,
+      "shaped": true,
+      "art_size": [
+        32,
+        128
+      ],
+      "cells_wh": [
+        1,
+        4
+      ],
+      "content_size": [
+        31,
+        111
+      ],
+      "native_size": [
+        32,
+        112
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 7,
+      "section": null,
+      "src_rect": [
+        1064,
+        381,
+        72,
+        335
+      ],
+      "art_rect": [
+        355,
+        127,
+        24,
+        112
+      ],
+      "fill": 0.984,
+      "shaped": true,
+      "art_size": [
+        32,
+        128
+      ],
+      "cells_wh": [
+        1,
+        4
+      ],
+      "content_size": [
+        23,
+        111
+      ],
+      "native_size": [
+        24,
+        112
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 8,
+      "section": null,
+      "src_rect": [
+        1187,
+        381,
+        35,
+        334
+      ],
+      "art_rect": [
+        396,
+        127,
+        12,
+        111
+      ],
+      "fill": 0.947,
+      "shaped": true,
+      "art_size": [
+        32,
+        128
+      ],
+      "cells_wh": [
+        1,
+        4
+      ],
+      "content_size": [
+        11,
+        111
+      ],
+      "native_size": [
+        12,
+        111
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 9,
+      "section": null,
+      "src_rect": [
+        524,
+        793,
+        232,
+        191
+      ],
+      "art_rect": [
+        175,
+        264,
+        77,
+        64
+      ],
+      "fill": 0.739,
+      "shaped": true,
+      "art_size": [
+        96,
+        64
+      ],
+      "cells_wh": [
+        3,
+        2
+      ],
+      "content_size": [
+        76,
+        62
+      ],
+      "native_size": [
+        77,
+        64
+      ],
+      "colors": 64,
+      "role": "water"
+    },
+    {
+      "id": 10,
+      "section": null,
+      "src_rect": [
+        778,
+        786,
+        174,
+        198
+      ],
+      "art_rect": [
+        259,
+        262,
+        58,
+        66
+      ],
+      "fill": 0.613,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        56,
+        64
+      ],
+      "native_size": [
+        58,
+        66
+      ],
+      "colors": 64,
+      "role": "water"
+    },
+    {
+      "id": 11,
+      "section": null,
+      "src_rect": [
+        975,
+        794,
+        115,
+        185
+      ],
+      "art_rect": [
+        325,
+        265,
+        38,
+        62
+      ],
+      "fill": 0.618,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        38,
+        61
+      ],
+      "native_size": [
+        38,
+        62
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 12,
+      "section": null,
+      "src_rect": [
+        1111,
+        799,
+        113,
+        179
+      ],
+      "art_rect": [
+        370,
+        266,
+        38,
+        60
+      ],
+      "fill": 0.488,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        36,
+        59
+      ],
+      "native_size": [
+        38,
+        60
+      ],
+      "colors": 62,
+      "role": "water"
+    },
+    {
+      "id": 13,
+      "section": null,
+      "src_rect": [
+        23,
+        895,
+        84,
+        37
+      ],
+      "art_rect": [
+        8,
+        298,
+        28,
+        12
+      ],
+      "fill": 0.54,
+      "shaped": true,
+      "art_size": [
+        32,
+        32
+      ],
+      "cells_wh": [
+        1,
+        1
+      ],
+      "content_size": [
+        27,
+        11
+      ],
+      "native_size": [
+        28,
+        12
+      ],
+      "colors": 31,
+      "role": "water"
+    },
+    {
+      "id": 14,
+      "section": null,
+      "src_rect": [
+        140,
+        890,
+        93,
+        42
+      ],
+      "art_rect": [
+        47,
+        297,
+        31,
+        14
+      ],
+      "fill": 0.518,
+      "shaped": true,
+      "art_size": [
+        32,
+        32
+      ],
+      "cells_wh": [
+        1,
+        1
+      ],
+      "content_size": [
+        30,
+        13
+      ],
+      "native_size": [
+        31,
+        14
+      ],
+      "colors": 31,
+      "role": "water"
+    },
+    {
+      "id": 15,
+      "section": null,
+      "src_rect": [
+        268,
+        890,
+        101,
+        42
+      ],
+      "art_rect": [
+        89,
+        297,
+        34,
+        14
+      ],
+      "fill": 0.482,
+      "shaped": true,
+      "art_size": [
+        64,
+        32
+      ],
+      "cells_wh": [
+        2,
+        1
+      ],
+      "content_size": [
+        33,
+        13
+      ],
+      "native_size": [
+        34,
+        14
+      ],
+      "colors": 60,
+      "role": "water"
+    },
+    {
+      "id": 16,
+      "section": null,
+      "src_rect": [
+        397,
+        891,
+        98,
+        41
+      ],
+      "art_rect": [
+        132,
+        297,
+        33,
+        14
+      ],
+      "fill": 0.375,
+      "shaped": true,
+      "art_size": [
+        32,
+        32
+      ],
+      "cells_wh": [
+        1,
+        1
+      ],
+      "content_size": [
+        32,
+        11
+      ],
+      "native_size": [
+        33,
+        14
+      ],
+      "colors": 31,
+      "role": "water"
+    },
+    {
+      "id": 17,
+      "section": null,
+      "src_rect": [
+        23,
+        1091,
+        125,
+        118
+      ],
+      "art_rect": [
+        8,
+        364,
+        42,
+        39
+      ],
+      "fill": 0.934,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        41,
+        38
+      ],
+      "native_size": [
+        42,
+        39
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 18,
+      "section": null,
+      "src_rect": [
+        182,
+        1091,
+        148,
+        123
+      ],
+      "art_rect": [
+        61,
+        364,
+        49,
+        41
+      ],
+      "fill": 0.927,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        47,
+        40
+      ],
+      "native_size": [
+        49,
+        41
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 19,
+      "section": null,
+      "src_rect": [
+        367,
+        1091,
+        128,
+        127
+      ],
+      "art_rect": [
+        122,
+        364,
+        43,
+        42
+      ],
+      "fill": 0.945,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        41,
+        41
+      ],
+      "native_size": [
+        43,
+        42
+      ],
+      "colors": 62,
+      "role": "water"
+    },
+    {
+      "id": 20,
+      "section": null,
+      "src_rect": [
+        566,
+        1082,
+        111,
+        143
+      ],
+      "art_rect": [
+        189,
+        361,
+        37,
+        48
+      ],
+      "fill": 0.696,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        36,
+        47
+      ],
+      "native_size": [
+        37,
+        48
+      ],
+      "colors": 64,
+      "role": "water"
+    },
+    {
+      "id": 21,
+      "section": null,
+      "src_rect": [
+        702,
+        1081,
+        111,
+        139
+      ],
+      "art_rect": [
+        234,
+        360,
+        37,
+        46
+      ],
+      "fill": 0.829,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        36,
+        45
+      ],
+      "native_size": [
+        37,
+        46
+      ],
+      "colors": 64,
+      "role": "water"
+    },
+    {
+      "id": 22,
+      "section": null,
+      "src_rect": [
+        834,
+        1074,
+        136,
+        146
+      ],
+      "art_rect": [
+        278,
+        358,
+        45,
+        49
+      ],
+      "fill": 0.773,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        45,
+        47
+      ],
+      "native_size": [
+        45,
+        49
+      ],
+      "colors": 64,
+      "role": "water"
+    },
+    {
+      "id": 23,
+      "section": null,
+      "src_rect": [
+        1004,
+        1081,
+        96,
+        139
+      ],
+      "art_rect": [
+        335,
+        360,
+        32,
+        46
+      ],
+      "fill": 0.764,
+      "shaped": true,
+      "art_size": [
+        32,
+        64
+      ],
+      "cells_wh": [
+        1,
+        2
+      ],
+      "content_size": [
+        31,
+        45
+      ],
+      "native_size": [
+        32,
+        46
+      ],
+      "colors": 63,
+      "role": "water"
+    },
+    {
+      "id": 24,
+      "section": null,
+      "src_rect": [
+        1128,
+        1085,
+        96,
+        135
+      ],
+      "art_rect": [
+        376,
+        362,
+        32,
+        45
+      ],
+      "fill": 0.737,
+      "shaped": true,
+      "art_size": [
+        32,
+        64
+      ],
+      "cells_wh": [
+        1,
+        2
+      ],
+      "content_size": [
+        30,
+        44
+      ],
+      "native_size": [
+        32,
+        45
+      ],
+      "colors": 63,
+      "role": "water"
+    }
+  ]
+}

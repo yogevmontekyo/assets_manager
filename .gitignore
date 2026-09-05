@@ -3,6 +3,9 @@
 /Output_Sprite_Sheet/
 /background_image/snapped/
 
+# Parallax pipeline (parallax_prep.py): generated layer strips + catalog
+/background_image/parallax/
+
 # Tile-atlas pipeline: generated deliveries + authoring aids
 /Deliveries/
 tiles/**/*_ruler*.png

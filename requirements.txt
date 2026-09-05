@@ -4,3 +4,5 @@ pillow
 # If it's missing, centering automatically falls back to the pure-NumPy
 # "centroid" method.
 opencv-python-headless
+# tile pipeline: nearest-colour fill for key-colour cleanup (tile_segment._nearest_fill)
+scipy

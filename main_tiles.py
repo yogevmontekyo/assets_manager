@@ -131,7 +131,9 @@ _SEG_DEFAULTS = dict(alpha_thresh=64, key_tol=60, key_margin=40, magenta_peel=2,
                      magenta_kill=False, min_area=150, min_dim=6,
                      max_w_frac=0.30, max_h_frac=0.55, pad=1, close_px=0,
                      tile_art=16, grid_split=False, split_min_cov=0.15,
-                     size_table=False, alpha_bin=128, chroma=None)
+                     size_table=False, alpha_bin=128, chroma=None,
+                     extra_large=False, key_rim_peel=0, shadow_detint=0.0,
+                     trim_stragglers=True)
 
 
 def run_segment(spec, min_area=None):

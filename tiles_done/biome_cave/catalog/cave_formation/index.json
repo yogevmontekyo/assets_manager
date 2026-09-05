@@ -1,0 +1,1201 @@
+{
+  "sheet": "cave_formation",
+  "mask": "border-colour (241, 8, 249)",
+  "count": 33,
+  "art_pixel_src_px": [
+    2.6667,
+    2.6667
+  ],
+  "size_table": true,
+  "grid": 32,
+  "tiles": [
+    {
+      "id": 0,
+      "section": null,
+      "src_rect": [
+        18,
+        111,
+        302,
+        125
+      ],
+      "art_rect": [
+        7,
+        42,
+        113,
+        47
+      ],
+      "fill": 0.483,
+      "shaped": true,
+      "art_size": [
+        128,
+        64
+      ],
+      "cells_wh": [
+        4,
+        2
+      ],
+      "content_size": [
+        112,
+        45
+      ],
+      "native_size": [
+        113,
+        47
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 1,
+      "section": null,
+      "src_rect": [
+        339,
+        111,
+        210,
+        148
+      ],
+      "art_rect": [
+        127,
+        42,
+        79,
+        56
+      ],
+      "fill": 0.449,
+      "shaped": true,
+      "art_size": [
+        96,
+        64
+      ],
+      "cells_wh": [
+        3,
+        2
+      ],
+      "content_size": [
+        78,
+        54
+      ],
+      "native_size": [
+        79,
+        56
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 2,
+      "section": null,
+      "src_rect": [
+        568,
+        111,
+        232,
+        148
+      ],
+      "art_rect": [
+        213,
+        42,
+        87,
+        56
+      ],
+      "fill": 0.525,
+      "shaped": true,
+      "art_size": [
+        96,
+        64
+      ],
+      "cells_wh": [
+        3,
+        2
+      ],
+      "content_size": [
+        86,
+        54
+      ],
+      "native_size": [
+        87,
+        56
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 3,
+      "section": null,
+      "src_rect": [
+        818,
+        111,
+        143,
+        148
+      ],
+      "art_rect": [
+        307,
+        42,
+        54,
+        56
+      ],
+      "fill": 0.503,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        53,
+        54
+      ],
+      "native_size": [
+        54,
+        56
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 4,
+      "section": null,
+      "src_rect": [
+        980,
+        111,
+        62,
+        116
+      ],
+      "art_rect": [
+        368,
+        42,
+        23,
+        44
+      ],
+      "fill": 0.539,
+      "shaped": true,
+      "art_size": [
+        32,
+        64
+      ],
+      "cells_wh": [
+        1,
+        2
+      ],
+      "content_size": [
+        21,
+        42
+      ],
+      "native_size": [
+        23,
+        44
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 5,
+      "section": null,
+      "src_rect": [
+        1061,
+        111,
+        70,
+        124
+      ],
+      "art_rect": [
+        398,
+        42,
+        26,
+        46
+      ],
+      "fill": 0.522,
+      "shaped": true,
+      "art_size": [
+        32,
+        64
+      ],
+      "cells_wh": [
+        1,
+        2
+      ],
+      "content_size": [
+        25,
+        45
+      ],
+      "native_size": [
+        26,
+        46
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 6,
+      "section": null,
+      "src_rect": [
+        1150,
+        111,
+        64,
+        142
+      ],
+      "art_rect": [
+        431,
+        42,
+        24,
+        53
+      ],
+      "fill": 0.624,
+      "shaped": true,
+      "art_size": [
+        32,
+        64
+      ],
+      "cells_wh": [
+        1,
+        2
+      ],
+      "content_size": [
+        21,
+        52
+      ],
+      "native_size": [
+        24,
+        53
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 7,
+      "section": null,
+      "src_rect": [
+        1237,
+        111,
+        58,
+        125
+      ],
+      "art_rect": [
+        464,
+        42,
+        22,
+        47
+      ],
+      "fill": 0.616,
+      "shaped": true,
+      "art_size": [
+        32,
+        64
+      ],
+      "cells_wh": [
+        1,
+        2
+      ],
+      "content_size": [
+        20,
+        46
+      ],
+      "native_size": [
+        22,
+        47
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 8,
+      "section": null,
+      "src_rect": [
+        1313,
+        111,
+        186,
+        148
+      ],
+      "art_rect": [
+        492,
+        42,
+        70,
+        56
+      ],
+      "fill": 0.598,
+      "shaped": true,
+      "art_size": [
+        96,
+        64
+      ],
+      "cells_wh": [
+        3,
+        2
+      ],
+      "content_size": [
+        68,
+        54
+      ],
+      "native_size": [
+        70,
+        56
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 9,
+      "section": null,
+      "src_rect": [
+        373,
+        324,
+        137,
+        116
+      ],
+      "art_rect": [
+        140,
+        122,
+        51,
+        44
+      ],
+      "fill": 0.442,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        50,
+        42
+      ],
+      "native_size": [
+        51,
+        44
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 10,
+      "section": null,
+      "src_rect": [
+        711,
+        294,
+        109,
+        146
+      ],
+      "art_rect": [
+        267,
+        110,
+        41,
+        55
+      ],
+      "fill": 0.448,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        39,
+        53
+      ],
+      "native_size": [
+        41,
+        55
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 11,
+      "section": null,
+      "src_rect": [
+        834,
+        312,
+        119,
+        128
+      ],
+      "art_rect": [
+        313,
+        117,
+        45,
+        48
+      ],
+      "fill": 0.467,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        43,
+        46
+      ],
+      "native_size": [
+        45,
+        48
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 12,
+      "section": null,
+      "src_rect": [
+        966,
+        273,
+        127,
+        167
+      ],
+      "art_rect": [
+        362,
+        102,
+        48,
+        63
+      ],
+      "fill": 0.429,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        46,
+        61
+      ],
+      "native_size": [
+        48,
+        63
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 13,
+      "section": null,
+      "src_rect": [
+        1106,
+        300,
+        115,
+        140
+      ],
+      "art_rect": [
+        415,
+        112,
+        43,
+        52
+      ],
+      "fill": 0.438,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        42,
+        51
+      ],
+      "native_size": [
+        43,
+        52
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 14,
+      "section": null,
+      "src_rect": [
+        1323,
+        300,
+        185,
+        140
+      ],
+      "art_rect": [
+        496,
+        112,
+        69,
+        52
+      ],
+      "fill": 0.493,
+      "shaped": true,
+      "art_size": [
+        96,
+        64
+      ],
+      "cells_wh": [
+        3,
+        2
+      ],
+      "content_size": [
+        69,
+        51
+      ],
+      "native_size": [
+        69,
+        52
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 15,
+      "section": null,
+      "src_rect": [
+        297,
+        355,
+        64,
+        85
+      ],
+      "art_rect": [
+        111,
+        133,
+        24,
+        32
+      ],
+      "fill": 0.494,
+      "shaped": true,
+      "art_size": [
+        32,
+        32
+      ],
+      "cells_wh": [
+        1,
+        1
+      ],
+      "content_size": [
+        22,
+        31
+      ],
+      "native_size": [
+        24,
+        32
+      ],
+      "colors": 32,
+      "role": "decoration"
+    },
+    {
+      "id": 16,
+      "section": null,
+      "src_rect": [
+        523,
+        342,
+        175,
+        98
+      ],
+      "art_rect": [
+        196,
+        128,
+        66,
+        37
+      ],
+      "fill": 0.439,
+      "shaped": true,
+      "art_size": [
+        64,
+        64
+      ],
+      "cells_wh": [
+        2,
+        2
+      ],
+      "content_size": [
+        64,
+        35
+      ],
+      "native_size": [
+        66,
+        37
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 17,
+      "section": null,
+      "src_rect": [
+        18,
+        396,
+        111,
+        44
+      ],
+      "art_rect": [
+        7,
+        148,
+        42,
+        16
+      ],
+      "fill": 0.599,
+      "shaped": true,
+      "art_size": [
+        64,
+        32
+      ],
+      "cells_wh": [
+        2,
+        1
+      ],
+      "content_size": [
+        40,
+        15
+      ],
+      "native_size": [
+        42,
+        16
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 18,
+      "section": null,
+      "src_rect": [
+        142,
+        391,
+        143,
+        49
+      ],
+      "art_rect": [
+        53,
+        147,
+        54,
+        18
+      ],
+      "fill": 0.608,
+      "shaped": true,
+      "art_size": [
+        64,
+        32
+      ],
+      "cells_wh": [
+        2,
+        1
+      ],
+      "content_size": [
+        52,
+        17
+      ],
+      "native_size": [
+        54,
+        18
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 19,
+      "section": null,
+      "src_rect": [
+        1234,
+        391,
+        76,
+        49
+      ],
+      "art_rect": [
+        463,
+        147,
+        28,
+        18
+      ],
+      "fill": 0.565,
+      "shaped": true,
+      "art_size": [
+        32,
+        32
+      ],
+      "cells_wh": [
+        1,
+        1
+      ],
+      "content_size": [
+        27,
+        17
+      ],
+      "native_size": [
+        28,
+        18
+      ],
+      "colors": 32,
+      "role": "decoration"
+    },
+    {
+      "id": 20,
+      "section": null,
+      "src_rect": [
+        21,
+        510,
+        154,
+        190
+      ],
+      "art_rect": [
+        8,
+        191,
+        58,
+        71
+      ],
+      "fill": 0.789,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        57,
+        70
+      ],
+      "native_size": [
+        58,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 21,
+      "section": null,
+      "src_rect": [
+        199,
+        510,
+        171,
+        190
+      ],
+      "art_rect": [
+        75,
+        191,
+        64,
+        71
+      ],
+      "fill": 0.842,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        63,
+        70
+      ],
+      "native_size": [
+        64,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 22,
+      "section": null,
+      "src_rect": [
+        407,
+        510,
+        162,
+        190
+      ],
+      "art_rect": [
+        153,
+        191,
+        61,
+        71
+      ],
+      "fill": 0.77,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        60,
+        70
+      ],
+      "native_size": [
+        61,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 23,
+      "section": null,
+      "src_rect": [
+        607,
+        510,
+        150,
+        190
+      ],
+      "art_rect": [
+        228,
+        191,
+        56,
+        71
+      ],
+      "fill": 0.73,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        54,
+        70
+      ],
+      "native_size": [
+        56,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 24,
+      "section": null,
+      "src_rect": [
+        779,
+        510,
+        165,
+        190
+      ],
+      "art_rect": [
+        292,
+        191,
+        62,
+        71
+      ],
+      "fill": 0.781,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        60,
+        70
+      ],
+      "native_size": [
+        62,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 25,
+      "section": null,
+      "src_rect": [
+        976,
+        510,
+        128,
+        190
+      ],
+      "art_rect": [
+        366,
+        191,
+        48,
+        71
+      ],
+      "fill": 0.827,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        46,
+        70
+      ],
+      "native_size": [
+        48,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 26,
+      "section": null,
+      "src_rect": [
+        1137,
+        510,
+        167,
+        190
+      ],
+      "art_rect": [
+        426,
+        191,
+        63,
+        71
+      ],
+      "fill": 0.825,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        61,
+        70
+      ],
+      "native_size": [
+        63,
+        71
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 27,
+      "section": null,
+      "src_rect": [
+        1327,
+        510,
+        186,
+        190
+      ],
+      "art_rect": [
+        498,
+        191,
+        70,
+        71
+      ],
+      "fill": 0.726,
+      "shaped": true,
+      "art_size": [
+        96,
+        96
+      ],
+      "cells_wh": [
+        3,
+        3
+      ],
+      "content_size": [
+        68,
+        70
+      ],
+      "native_size": [
+        70,
+        71
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 28,
+      "section": null,
+      "src_rect": [
+        532,
+        768,
+        194,
+        204
+      ],
+      "art_rect": [
+        200,
+        288,
+        73,
+        76
+      ],
+      "fill": 0.578,
+      "shaped": true,
+      "art_size": [
+        96,
+        96
+      ],
+      "cells_wh": [
+        3,
+        3
+      ],
+      "content_size": [
+        71,
+        75
+      ],
+      "native_size": [
+        73,
+        76
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 29,
+      "section": null,
+      "src_rect": [
+        759,
+        768,
+        169,
+        204
+      ],
+      "art_rect": [
+        285,
+        288,
+        63,
+        76
+      ],
+      "fill": 0.698,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        62,
+        75
+      ],
+      "native_size": [
+        63,
+        76
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 30,
+      "section": null,
+      "src_rect": [
+        973,
+        768,
+        159,
+        204
+      ],
+      "art_rect": [
+        365,
+        288,
+        60,
+        76
+      ],
+      "fill": 0.789,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        58,
+        75
+      ],
+      "native_size": [
+        60,
+        76
+      ],
+      "colors": 63,
+      "role": "decoration"
+    },
+    {
+      "id": 31,
+      "section": null,
+      "src_rect": [
+        1169,
+        768,
+        143,
+        203
+      ],
+      "art_rect": [
+        438,
+        288,
+        54,
+        76
+      ],
+      "fill": 0.728,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        51,
+        74
+      ],
+      "native_size": [
+        54,
+        76
+      ],
+      "colors": 64,
+      "role": "decoration"
+    },
+    {
+      "id": 32,
+      "section": null,
+      "src_rect": [
+        1358,
+        768,
+        151,
+        204
+      ],
+      "art_rect": [
+        509,
+        288,
+        57,
+        76
+      ],
+      "fill": 0.804,
+      "shaped": true,
+      "art_size": [
+        64,
+        96
+      ],
+      "cells_wh": [
+        2,
+        3
+      ],
+      "content_size": [
+        55,
+        75
+      ],
+      "native_size": [
+        57,
+        76
+      ],
+      "colors": 64,
+      "role": "decoration"
+    }
+  ]
+}

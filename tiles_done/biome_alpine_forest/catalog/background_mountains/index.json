@@ -1,0 +1,313 @@
+{
+  "sheet": "background_mountains",
+  "mask": "border-colour (237, 6, 238)",
+  "count": 12,
+  "art_pixel_src_px": [
+    2.6667,
+    2.6667
+  ],
+  "size_table": false,
+  "grid": 32,
+  "tiles": [
+    {
+      "id": 0,
+      "section": null,
+      "src_rect": [
+        21,
+        161,
+        292,
+        78
+      ],
+      "art_rect": [
+        8,
+        60,
+        110,
+        29
+      ],
+      "fill": 0.422,
+      "shaped": true,
+      "art_size": [
+        110,
+        29
+      ],
+      "colors": 1001,
+      "opaque_frac": 0.336,
+      "role": "parallax"
+    },
+    {
+      "id": 1,
+      "section": null,
+      "src_rect": [
+        319,
+        156,
+        314,
+        83
+      ],
+      "art_rect": [
+        120,
+        58,
+        118,
+        31
+      ],
+      "fill": 0.429,
+      "shaped": true,
+      "art_size": [
+        118,
+        31
+      ],
+      "colors": 1189,
+      "opaque_frac": 0.353,
+      "role": "parallax"
+    },
+    {
+      "id": 2,
+      "section": null,
+      "src_rect": [
+        640,
+        175,
+        311,
+        64
+      ],
+      "art_rect": [
+        240,
+        66,
+        117,
+        24
+      ],
+      "fill": 0.391,
+      "shaped": true,
+      "art_size": [
+        117,
+        24
+      ],
+      "colors": 785,
+      "opaque_frac": 0.295,
+      "role": "parallax"
+    },
+    {
+      "id": 3,
+      "section": null,
+      "src_rect": [
+        957,
+        180,
+        166,
+        57
+      ],
+      "art_rect": [
+        359,
+        68,
+        62,
+        21
+      ],
+      "fill": 0.427,
+      "shaped": true,
+      "art_size": [
+        62,
+        21
+      ],
+      "colors": 427,
+      "opaque_frac": 0.339,
+      "role": "parallax"
+    },
+    {
+      "id": 4,
+      "section": null,
+      "src_rect": [
+        1135,
+        172,
+        213,
+        67
+      ],
+      "art_rect": [
+        426,
+        64,
+        80,
+        25
+      ],
+      "fill": 0.43,
+      "shaped": true,
+      "art_size": [
+        80,
+        25
+      ],
+      "colors": 653,
+      "opaque_frac": 0.343,
+      "role": "parallax"
+    },
+    {
+      "id": 5,
+      "section": null,
+      "src_rect": [
+        1361,
+        182,
+        156,
+        57
+      ],
+      "art_rect": [
+        510,
+        68,
+        58,
+        21
+      ],
+      "fill": 0.428,
+      "shaped": true,
+      "art_size": [
+        58,
+        21
+      ],
+      "colors": 380,
+      "opaque_frac": 0.321,
+      "role": "parallax"
+    },
+    {
+      "id": 6,
+      "section": null,
+      "src_rect": [
+        16,
+        362,
+        253,
+        102
+      ],
+      "art_rect": [
+        6,
+        136,
+        95,
+        38
+      ],
+      "fill": 0.554,
+      "shaped": true,
+      "art_size": [
+        95,
+        38
+      ],
+      "colors": 1854,
+      "opaque_frac": 0.52,
+      "role": "parallax"
+    },
+    {
+      "id": 7,
+      "section": null,
+      "src_rect": [
+        273,
+        350,
+        267,
+        114
+      ],
+      "art_rect": [
+        102,
+        131,
+        100,
+        43
+      ],
+      "fill": 0.524,
+      "shaped": true,
+      "art_size": [
+        100,
+        43
+      ],
+      "colors": 2061,
+      "opaque_frac": 0.495,
+      "role": "parallax"
+    },
+    {
+      "id": 8,
+      "section": null,
+      "src_rect": [
+        543,
+        364,
+        365,
+        100
+      ],
+      "art_rect": [
+        204,
+        136,
+        137,
+        38
+      ],
+      "fill": 0.5,
+      "shaped": true,
+      "art_size": [
+        137,
+        38
+      ],
+      "colors": 2364,
+      "opaque_frac": 0.469,
+      "role": "parallax"
+    },
+    {
+      "id": 9,
+      "section": null,
+      "src_rect": [
+        16,
+        587,
+        254,
+        105
+      ],
+      "art_rect": [
+        6,
+        220,
+        95,
+        39
+      ],
+      "fill": 0.575,
+      "shaped": true,
+      "art_size": [
+        95,
+        39
+      ],
+      "colors": 1995,
+      "opaque_frac": 0.541,
+      "role": "parallax"
+    },
+    {
+      "id": 10,
+      "section": null,
+      "src_rect": [
+        273,
+        549,
+        346,
+        143
+      ],
+      "art_rect": [
+        102,
+        206,
+        130,
+        54
+      ],
+      "fill": 0.545,
+      "shaped": true,
+      "art_size": [
+        130,
+        54
+      ],
+      "colors": 3528,
+      "opaque_frac": 0.513,
+      "role": "parallax"
+    },
+    {
+      "id": 11,
+      "section": null,
+      "src_rect": [
+        621,
+        564,
+        325,
+        128
+      ],
+      "art_rect": [
+        233,
+        212,
+        122,
+        48
+      ],
+      "fill": 0.546,
+      "shaped": true,
+      "art_size": [
+        122,
+        48
+      ],
+      "colors": 2963,
+      "opaque_frac": 0.513,
+      "role": "parallax"
+    }
+  ]
+}

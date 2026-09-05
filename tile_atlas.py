@@ -191,19 +191,31 @@ def snap_tile(native_img, cell_w, cell_h, rect_src, grid, sample_frac=0.5,
     element is ``True`` so ``build_atlas`` can flag it. Author the rect against
     a higher-resolution source sheet to avoid that.
 
-    If ``key_rgb`` and ``fill_rgb`` are both given, native pixels within
-    ``key_tol`` (per-channel sum) of ``key_rgb`` are repainted to ``fill_rgb``
-    first, so the key can't bleed a coloured fringe and lands on an exact,
-    re-keyable value.
+    If ``key_rgb`` is given, the source key colour and its blended rim inside
+    the crop are removed before the downscale so no coloured fringe survives:
+    with ``fill_rgb`` (a chroma background) the key pixels are repainted to that
+    exact value; without it (an opaque tile) they are filled in from their
+    opaque neighbours. Either way the ragged edge of a hand-marked rect that
+    clips the key gutter stays clean.
     """
     x = int(round(rect_src[0] / cell_w))
     y = int(round(rect_src[1] / cell_h))
     w = max(1, int(round(rect_src[2] / cell_w)))
     h = max(1, int(round(rect_src[3] / cell_h)))
     crop = np.asarray(native_img.convert("RGB").crop((x, y, x + w, y + h))).copy()
-    if key_rgb is not None and fill_rgb is not None:
-        d = np.abs(crop.astype(int) - np.array(key_rgb)).sum(axis=2)
-        crop[d <= key_tol] = fill_rgb
+    if key_rgb is not None:
+        import tile_segment as _tseg
+        keym = _tseg.key_bg_mask(crop, tuple(key_rgb), int(key_tol) + 80, 40)
+        kr, kg, kb = (int(v) for v in key_rgb)
+        if kr >= 200 and kb >= 200 and kg <= 80:      # magenta key: also catch
+            r = crop[..., 0].astype(int)              # its blended pink/violet
+            g = crop[..., 1].astype(int)              # ramp (B leads G, unlike
+            b = crop[..., 2].astype(int)              # the brown rock beneath)
+            keym |= (b > g + 22) & (r > g + 8) & (b > 55)
+        if fill_rgb is not None:
+            crop[keym] = fill_rgb
+        else:
+            crop = _tseg._nearest_fill(crop, keym)
     tile = Image.fromarray(crop)
     upscaled = w < grid or h < grid
     if not upscaled:
@@ -242,8 +254,8 @@ def build_atlas(spec):
               + (f"  palette={pal_n}" if pal_n > 0 else "  palette=off")
               + (f"  native_snap=on" if native_snap else "  native_snap=off")]
     if key_rgb is not None and fill_rgb is None and bg != "transparent":
-        report.append("  note: 'source_key' is set but background is opaque "
-                      "-- key ignored (cells are fully painted)")
+        report.append(f"  note: opaque background -- source key {key_rgb} and its "
+                      "rim are filled in (nearest-colour) in each cell before downscale")
 
     for t in spec["tiles"]:
         name = t["src"]
