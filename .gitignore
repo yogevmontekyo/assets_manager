@@ -1,16 +1,25 @@
-# Source images and generated sprite output
+# ─────────────────────────────────────────────────────────────────────────
+# Only the tooling code is shared on the remote. All game art — source
+# style-sheets, snapped/segmented output, parallax strips, deliveries — is
+# kept local. The hand-authored atlas_spec.json files are the one exception
+# (they are the declarative input to main_tiles.py, not assets).
+# ─────────────────────────────────────────────────────────────────────────
+
+# Sprite pipeline
 /Input_Generated_Character/
 /Output_Sprite_Sheet/
-/background_image/snapped/
 
-# Parallax pipeline (parallax_prep.py): generated layer strips + catalog
-/background_image/parallax/
+# Background / parallax pipeline
+/background_image/
 
-# Tile-atlas pipeline: generated deliveries + authoring aids
+# Tile-atlas pipeline: deliveries + every biome art tree
 /Deliveries/
-tiles/**/*_ruler*.png
-tiles/**/*_native.png
-tiles/**/catalog/
+/tiles/**
+/tiles_done/**
+!/tiles/**/
+!/tiles_done/**/
+!/tiles/**/atlas_spec.json
+!/tiles_done/**/atlas_spec.json
 
 # Python
 __pycache__/
